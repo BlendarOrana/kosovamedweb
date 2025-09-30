@@ -235,7 +235,7 @@ function LoginPage() {
           
           <button
             type="submit"
-            className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-cyan-500/50 text-white font-bold py-3 px-4 rounded-lg transition duration-300 flex justify-center items-center shadow-lg hover:shadow-cyan-500/30"
+            className="w-full bg-cyan-500 hover:bg-cyan-600 disabled:bg-cyan-500/50 text-white font-bold py-3 px-4 rounded-lg transition duration-300 flex justify-center items-center shadow-lg "
             disabled={loading}
           >
             {loading ? <LoadingSpinner size="sm" /> : "Identifikohu"}
