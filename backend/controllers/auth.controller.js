@@ -100,9 +100,9 @@ export const login = async (req, res) => {
   }
 };
 
-// NEW: Mobile login (returns token in response)
+// UPDATED: Mobile login with FCM token support
 export const mobileLogin = async (req, res) => {
-  const { name, password } = req.body;
+  const { name, password, fcmToken } = req.body;
 
   try {
     const result = await promisePool.query('SELECT * FROM users WHERE name = $1', [name]);
@@ -119,6 +119,14 @@ export const mobileLogin = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (isMatch) {
+      // Update FCM token if provided
+      if (fcmToken) {
+        await promisePool.query(
+          'UPDATE users SET fcm_token = $1 WHERE id = $2',
+          [fcmToken, user.id]
+        );
+      }
+
       // Generate token with longer expiry for mobile
       const accessToken = generateAccessToken(user.id, true);
 
@@ -144,8 +152,39 @@ export const mobileLogin = async (req, res) => {
   }
 };
 
+// NEW: Update FCM token endpoint
+export const updateFcmToken = async (req, res) => {
+  const { fcmToken } = req.body;
+  const userId = req.user.id;
+
+  try {
+    if (!fcmToken) {
+      return res.status(400).json({ message: "FCM token is required" });
+    }
+
+    await promisePool.query(
+      'UPDATE users SET fcm_token = $1 WHERE id = $2',
+      [fcmToken, userId]
+    );
+
+    res.json({ message: "FCM token updated successfully" });
+  } catch (error) {
+    console.log("Error updating FCM token:", error.message);
+    res.status(500).json({ message: "Failed to update FCM token" });
+  }
+};
+
 export const logout = async (req, res) => {
   try {
+    // Clear FCM token on logout for mobile users
+    const userId = req.user?.id;
+    if (userId) {
+      await promisePool.query(
+        'UPDATE users SET fcm_token = NULL WHERE id = $1',
+        [userId]
+      );
+    }
+
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
