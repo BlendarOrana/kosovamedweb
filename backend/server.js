@@ -13,13 +13,19 @@ import authRoutes from "./routes/auth.route.js";
 import adminRoutes from "./routes/admin.route.js";
 import reportsRoutes from './routes/reports.route.js';
 import attendanceRoutes from './routes/attendance.route.js';
+import notificationRoutes from './routes/notification.route.js';
 
-// Lib imports
+
 import { testS3Connection } from "./lib/s3.js";
+import { initializeFirebaseAdmin } from "./lib/firebase.js";
+
 import { connectDB } from "./lib/db.js";
 import { sqlInjectionProtection } from './lib/security/postgres.security.js';
 
 dotenv.config();
+
+initializeFirebaseAdmin(); 
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -86,7 +92,7 @@ app.use(helmet({
 // 2. Rate Limiting
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 1000 requests per windowMs
+  max: 1000, 
   message: { error: "Too many requests from this IP, please try again after 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -110,18 +116,15 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // 4. Cookie Parser
 app.use(cookieParser());
 
-// 5. CORS Configuration - Updated for React Native development
 app.use(cors({
   origin: (origin, callback) => {
-    // In development mode, allow all origins (including React Native)
     if (process.env.NODE_ENV !== "production") {
       callback(null, true);
     } else {
-      // In production, you can specify your production domains here
-      const allowedOrigins = [
-        // Add your production domains here when needed
-        // 'https://your-production-domain.com',
-      ];
+const allowedOrigins = [
+  'https://www.kosovamed-app.com',
+  'https://kosovamed-app.com',
+];    
       
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -152,6 +155,8 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/notifications', notificationRoutes);
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
@@ -189,5 +194,6 @@ app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   connectDB();
   testS3Connection();
+
 });
 
