@@ -124,6 +124,7 @@ app.use(cors({
 const allowedOrigins = [
   'https://www.kosovamed-app.com',
   'https://kosovamed-app.com',
+  'https://kosovamedweb.onrender.com/',
 ];    
       
       if (!origin || allowedOrigins.includes(origin)) {
