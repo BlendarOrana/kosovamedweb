@@ -1,271 +1,331 @@
-// backend/controllers/notification.controller.js
+// routes/notification.route.js
+import express from 'express';
+import { protectRoute } from '../middleware/auth.middleware.js';
+import { adminRoute } from '../middleware/admin.middleware.js';
+import NotificationService from '../services/notification.service.js';
+import { promisePool } from '../lib/db.js';
 
-import { admin } from "../lib/firebase.js";
-import { promisePool } from "../lib/db.js";
+const router = express.Router();
 
-// Helper function to send notifications in batches
-const sendNotificationBatch = async (tokens, notification, data = {}) => {
-  const BATCH_SIZE = 50;
-  const DELAY_MS = 100;
-  const results = {
-    successful: 0,
-    failed: 0,
-    failedTokens: []
-  };
-
-  // Filter out null/undefined tokens
-  const validTokens = tokens.filter(token => token);
-
-  // Process tokens in batches
-  for (let i = 0; i < validTokens.length; i += BATCH_SIZE) {
-    const batch = validTokens.slice(i, i + BATCH_SIZE);
-    
-    // Create message for this batch
-    const message = {
-      notification: {
-        title: notification.title,
-        body: notification.body,
-        ...(notification.imageUrl && { imageUrl: notification.imageUrl })
-      },
-      data: {
-        ...data,
-        timestamp: new Date().toISOString()
-      },
-      tokens: batch
-    };
-
-    try {
-      // Send to FCM
-      const response = await admin.messaging().sendEachForMulticast(message);
-      
-      // Process results
-      results.successful += response.successCount;
-      results.failed += response.failureCount;
-      
-      // Collect failed tokens for cleanup
-      response.responses.forEach((resp, index) => {
-        if (!resp.success) {
-          results.failedTokens.push({
-            token: batch[index],
-            error: resp.error?.message || 'Unknown error'
-          });
-        }
-      });
-      
-      // Add delay between batches to avoid rate limiting
-      if (i + BATCH_SIZE < validTokens.length) {
-        await new Promise(resolve => setTimeout(resolve, DELAY_MS));
-      }
-    } catch (error) {
-      console.error(`Error sending batch ${i / BATCH_SIZE + 1}:`, error);
-      results.failed += batch.length;
-    }
-  }
-
-  return results;
-};
-
-// Send notification to all active users
-export const sendNotificationToAll = async (req, res) => {
-  const { title, body, imageUrl, data } = req.body;
-
+/**
+ * Register/Update push token for the authenticated user
+ */
+router.post('/push-token', protectRoute, async (req, res) => {
   try {
-    // Validate input
-    if (!title || !body) {
-      return res.status(400).json({ 
-        message: "Title and body are required" 
-      });
+    const { push_token, device_type } = req.body;
+    const userId = req.user.id;
+
+    if (!push_token) {
+      return res.status(400).json({ error: 'Push token is required' });
     }
 
-    // Get all active users with FCM tokens
-    const result = await promisePool.query(
-      `SELECT id, name, fcm_token 
-       FROM users 
-       WHERE active = true 
-       AND fcm_token IS NOT NULL`
-    );
+    const result = await NotificationService.updateUserPushToken(userId, push_token, device_type);
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ 
-        message: "No active users with push notifications enabled" 
-      });
+    if (result.success) {
+      res.json({ message: 'Push token updated successfully' });
+    } else {
+      res.status(400).json({ error: result.error || 'Failed to update push token' });
     }
-
-    const tokens = result.rows.map(user => user.fcm_token);
-
-    // Send notifications in batches
-    const results = await sendNotificationBatch(
-      tokens, 
-      { title, body, imageUrl },
-      data || {}
-    );
-
-    // Clean up invalid tokens
-    if (results.failedTokens.length > 0) {
-      const invalidTokens = results.failedTokens
-        .filter(ft => ft.error.includes('registration-token-not-registered'))
-        .map(ft => ft.token);
-      
-      if (invalidTokens.length > 0) {
-        await promisePool.query(
-          `UPDATE users 
-           SET fcm_token = NULL 
-           WHERE fcm_token = ANY($1)`,
-          [invalidTokens]
-        );
-      }
-    }
-
-    res.json({
-      message: "Notifications sent successfully",
-      stats: {
-        total: tokens.length,
-        successful: results.successful,
-        failed: results.failed
-      }
-    });
-
   } catch (error) {
-    console.error("Error sending notifications to all:", error);
-    res.status(500).json({ 
-      message: "Failed to send notifications",
-      error: error.message 
-    });
+    console.error('Error updating push token:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
-};
+});
 
-// Send notification to specific user
-export const sendNotificationToUser = async (req, res) => {
-  const { userId } = req.params;
-  const { title, body, imageUrl, data } = req.body;
-
+/**
+ * Remove push token (for logout)
+ */
+router.delete('/push-token', protectRoute, async (req, res) => {
   try {
-    // Validate input
-    if (!title || !body) {
-      return res.status(400).json({ 
-        message: "Title and body are required" 
-      });
-    }
+    const userId = req.user.id;
+    await NotificationService.removeUserPushToken(userId);
+    res.json({ message: 'Push token removed successfully' });
+  } catch (error) {
+    console.error('Error removing push token:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
-    // Get user's FCM token
+/**
+ * Get notifications for authenticated user
+ */
+router.get('/', protectRoute, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { limit = 50, offset = 0 } = req.query;
+
     const result = await promisePool.query(
-      `SELECT id, name, fcm_token 
-       FROM users 
-       WHERE id = $1 
-       AND active = true 
-       AND fcm_token IS NOT NULL`,
+      `SELECT id, title, body, data, is_read, created_at 
+       FROM notifications 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC 
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+/**
+ * Mark notification as read
+ */
+router.patch('/:id/read', protectRoute, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    await promisePool.query(
+      'UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+
+    res.json({ message: 'Notification marked as read' });
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({ error: 'Failed to update notification' });
+  }
+});
+
+/**
+ * Mark all notifications as read for authenticated user
+ */
+router.patch('/read-all', protectRoute, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    await promisePool.query(
+      'UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false',
       [userId]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ 
-        message: "User not found or push notifications not enabled" 
-      });
-    }
-
-    const user = result.rows[0];
-
-    // Send single notification
-    const message = {
-      notification: {
-        title,
-        body,
-        ...(imageUrl && { imageUrl })
-      },
-      data: {
-        ...data,
-        userId: user.id.toString(),
-        timestamp: new Date().toISOString()
-      },
-      token: user.fcm_token
-    };
-
-    try {
-      const response = await admin.messaging().send(message);
-      
-      res.json({
-        message: "Notification sent successfully",
-        messageId: response,
-        user: {
-          id: user.id,
-          name: user.name
-        }
-      });
-    } catch (fcmError) {
-      // Handle invalid token
-      if (fcmError.code === 'messaging/registration-token-not-registered') {
-        await promisePool.query(
-          'UPDATE users SET fcm_token = NULL WHERE id = $1',
-          [userId]
-        );
-        return res.status(400).json({ 
-          message: "User's device token is invalid. Token has been removed." 
-        });
-      }
-      throw fcmError;
-    }
-
+    res.json({ message: 'All notifications marked as read' });
   } catch (error) {
-    console.error("Error sending notification to user:", error);
-    res.status(500).json({ 
-      message: "Failed to send notification",
-      error: error.message 
-    });
+    console.error('Error marking all as read:', error);
+    res.status(500).json({ error: 'Failed to update notifications' });
   }
-};
+});
 
-// Send notification to specific user roles
-export const sendNotificationToRole = async (req, res) => {
-  const { role, title, body, imageUrl, data } = req.body;
-
+/**
+ * Get unread notification count
+ */
+router.get('/unread-count', protectRoute, async (req, res) => {
   try {
-    // Validate input
-    if (!role || !title || !body) {
-      return res.status(400).json({ 
-        message: "Role, title, and body are required" 
-      });
-    }
+    const userId = req.user.id;
 
-    // Get all users with specified role and FCM tokens
     const result = await promisePool.query(
-      `SELECT id, name, fcm_token 
-       FROM users 
-       WHERE role = $1 
-       AND active = true 
-       AND fcm_token IS NOT NULL`,
-      [role]
+      'SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND is_read = false',
+      [userId]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ 
-        message: `No active ${role}s with push notifications enabled` 
-      });
+    res.json({ count: parseInt(result.rows[0].count) });
+  } catch (error) {
+    console.error('Error getting unread count:', error);
+    res.status(500).json({ error: 'Failed to get unread count' });
+  }
+});
+
+// ========== ADMIN ROUTES ==========
+
+/**
+ * Send notification to specific user (Admin only)
+ */
+router.post('/send-to-user', protectRoute, adminRoute, async (req, res) => {
+  try {
+    const { user_id, title, body, data } = req.body;
+
+    if (!user_id || !title || !body) {
+      return res.status(400).json({ error: 'user_id, title, and body are required' });
     }
 
-    const tokens = result.rows.map(user => user.fcm_token);
+    const result = await NotificationService.sendPushNotification(user_id, title, body, data);
 
-    // Send notifications in batches
-    const results = await sendNotificationBatch(
-      tokens, 
-      { title, body, imageUrl },
-      { ...data, targetRole: role }
+    if (result.success) {
+      res.json({ 
+        message: 'Notification sent successfully',
+        ticket: result.ticket 
+      });
+    } else {
+      res.status(400).json({ 
+        error: result.message || 'Failed to send notification' 
+      });
+    }
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * Send notification to multiple users (Admin only)
+ */
+router.post('/send-to-multiple', protectRoute, adminRoute, async (req, res) => {
+  try {
+    const { user_ids, title, body, data } = req.body;
+
+    if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
+      return res.status(400).json({ error: 'user_ids array is required' });
+    }
+
+    if (!title || !body) {
+      return res.status(400).json({ error: 'title and body are required' });
+    }
+
+    const result = await NotificationService.sendPushNotificationToMultiple(
+      user_ids, 
+      title, 
+      body, 
+      data
     );
+
+    if (result.success) {
+      res.json({ 
+        message: 'Notifications sent successfully',
+        sentCount: result.sentCount,
+        tickets: result.tickets 
+      });
+    } else {
+      res.status(400).json({ 
+        error: result.message || 'Failed to send notifications' 
+      });
+    }
+  } catch (error) {
+    console.error('Error sending multiple notifications:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * Send notification to all users (Admin only)
+ */
+router.post('/send-to-all', protectRoute, adminRoute, async (req, res) => {
+  try {
+    const { title, body, data } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({ error: 'title and body are required' });
+    }
+
+    const result = await NotificationService.sendPushNotificationToAll(title, body, data);
+
+    if (result.success) {
+      res.json({ 
+        message: 'Notifications sent to all users',
+        sentCount: result.sentCount 
+      });
+    } else {
+      res.status(400).json({ 
+        error: result.message || 'Failed to send notifications' 
+      });
+    }
+  } catch (error) {
+    console.error('Error sending notification to all:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * Send notification to users by role (Admin only)
+ */
+router.post('/send-by-role', protectRoute, adminRoute, async (req, res) => {
+  try {
+    const { role, title, body, data } = req.body;
+
+    if (!role || !title || !body) {
+      return res.status(400).json({ error: 'role, title, and body are required' });
+    }
+
+    const result = await NotificationService.sendPushNotificationByRole(
+      role, 
+      title, 
+      body, 
+      data
+    );
+
+    if (result.success) {
+      res.json({ 
+        message: `Notifications sent to all ${role} users`,
+        sentCount: result.sentCount 
+      });
+    } else {
+      res.status(400).json({ 
+        error: result.message || 'Failed to send notifications' 
+      });
+    }
+  } catch (error) {
+    console.error('Error sending notification by role:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * Get all notifications (Admin only) with pagination
+ */
+router.get('/all', protectRoute, adminRoute, async (req, res) => {
+  try {
+    const { limit = 100, offset = 0, user_id } = req.query;
+
+    let query = `
+      SELECT n.*, u.name as user_name 
+      FROM notifications n
+      JOIN users u ON n.user_id = u.id
+    `;
+    const params = [];
+
+    if (user_id) {
+      query += ' WHERE n.user_id = $1';
+      params.push(user_id);
+    }
+
+    query += ' ORDER BY n.created_at DESC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
+    params.push(limit, offset);
+
+    const result = await promisePool.query(query, params);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching all notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+/**
+ * Get notification statistics (Admin only)
+ */
+router.get('/stats', protectRoute, adminRoute, async (req, res) => {
+  try {
+    const stats = await promisePool.query(`
+      SELECT 
+        COUNT(*) as total_notifications,
+        COUNT(DISTINCT user_id) as unique_users,
+        COUNT(CASE WHEN is_read = true THEN 1 END) as read_count,
+        COUNT(CASE WHEN is_read = false THEN 1 END) as unread_count,
+        COUNT(CASE WHEN created_at > NOW() - INTERVAL '24 hours' THEN 1 END) as last_24h,
+        COUNT(CASE WHEN created_at > NOW() - INTERVAL '7 days' THEN 1 END) as last_7d
+      FROM notifications
+    `);
+
+    const pushTokenStats = await promisePool.query(`
+      SELECT 
+        COUNT(*) as total_users,
+        COUNT(push_token) as users_with_tokens,
+        COUNT(CASE WHEN device_type = 'ios' THEN 1 END) as ios_users,
+        COUNT(CASE WHEN device_type = 'android' THEN 1 END) as android_users
+      FROM users
+      WHERE active = true
+    `);
 
     res.json({
-      message: `Notifications sent to ${role}s successfully`,
-      stats: {
-        total: tokens.length,
-        successful: results.successful,
-        failed: results.failed
-      }
+      notifications: stats.rows[0],
+      pushTokens: pushTokenStats.rows[0]
     });
-
   } catch (error) {
-    console.error("Error sending notifications to role:", error);
-    res.status(500).json({ 
-      message: "Failed to send notifications",
-      error: error.message 
-    });
+    console.error('Error getting stats:', error);
+    res.status(500).json({ error: 'Failed to get statistics' });
   }
-};
+});
 
+export default router;
