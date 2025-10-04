@@ -8,7 +8,6 @@ import {
   logout, 
   getProfile, 
   getAllUsers,
-  updateFcmToken  // NEW: Add this import
 } from '../controllers/auth.controller.js';
 import { protectRoute, adminRoute } from "../middleware/auth.middleware.js";
 
@@ -25,6 +24,5 @@ router.get('/users', protectRoute, adminRoute, getAllUsers);
 router.post('/mobile-login', mobileLogin);
 
 // NEW: FCM token update route
-router.put('/fcm-token', protectRoute, updateFcmToken);
 
 export default router;
