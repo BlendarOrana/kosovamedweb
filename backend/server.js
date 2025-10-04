@@ -190,11 +190,16 @@ app.use((err, req, res, next) => {
   });
 });
 
-// --- SERVER STARTUP ---
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Server is running on http://localhost:${PORT}`);
   connectDB();
-  testS3Connection();
 
+  const s3Ok = await testS3Connection();
+  if (s3Ok) {
+    console.log(`✅ S3 bucket "${process.env.AWS_BUCKET_NAME}" connected successfully.`);
+  } else {
+    console.error('❌ S3 connection failed.');
+  }
 });
+
 
