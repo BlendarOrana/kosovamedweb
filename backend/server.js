@@ -56,27 +56,22 @@ app.use(helmet({
         "'self'", 
         "data:", 
         "blob:",
-        "https://d1ht3ugugwhy7y.cloudfront.net",
-        "https://transportservice67.s3.eu-north-1.amazonaws.com"
+     
       ],
       mediaSrc: [
         "'self'",
-        "https://d1ht3ugugwhy7y.cloudfront.net",
-        "https://transportservice67.s3.eu-north-1.amazonaws.com"
+
       ],
       objectSrc: [
         "'self'",
-        "https://d1ht3ugugwhy7y.cloudfront.net",
-        "https://transportservice67.s3.eu-north-1.amazonaws.com"
+  
       ],
       frameSrc: [
         "'self'",
-        "https://d1ht3ugugwhy7y.cloudfront.net"
       ],
       connectSrc: [
         "'self'",
-        "https://d1ht3ugugwhy7y.cloudfront.net",
-        "https://transportservice67.s3.eu-north-1.amazonaws.com"
+     
       ],
       fontSrc: ["'self'", "data:", "https:"],
       manifestSrc: ["'self'"],
