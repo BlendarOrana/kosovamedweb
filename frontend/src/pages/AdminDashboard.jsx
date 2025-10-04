@@ -1,24 +1,32 @@
-// src/pages/AdminDashboard.js
-
 import { useState, useEffect } from "react";
 import UserManagement from "../components/UserManagement";
 import Reports from "../components/Reports";
 import AdminSidebar from "../components/AdminSidebar";
-import VacationManagement from "../components/VacationManagement"; // <-- IMPORT THE NEW COMPONENT
+import VacationManagement from "../components/VacationManagement";
+import Notifications from "../components/Notifications"; // <-- IMPORT THE NEW COMPONENT
 import { useUserStore } from "../stores/useUserStore";
+import { useNotificationStore } from "../stores/useNotificationStore"; // Import notification store
 
-// UPDATED: Added the new route for vacations
+// UPDATED: Added the new route for notifications
 const adminRoutes = [
   { path: "/admin/users", id: "users", label: "Menaxhimi i Përdoruesve", fullScreen: false },
+  { path: "/admin/notifications", id: "notifications", label: "Njoftimet", fullScreen: false },
   { path: "/admin/vacations", id: "vacations", label: "Kërkesat për Pushime", fullScreen: false },
   { path: "/admin/raportet", id: "raportet", label: "Raportet", fullScreen: false },
 ];
 
 const AdminDashboard = () => {
   const { user } = useUserStore();
+  const fetchNotifications = useNotificationStore(state => state.fetchNotifications); // Get fetch function
   
   const [activeTab, setActiveTab] = useState("users");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if(user) {
+      fetchNotifications();
+    }
+  }, [user, fetchNotifications])
 
   const getTabIdFromPath = (path) => {
     const route = adminRoutes.find(r => r.path === path);
@@ -36,7 +44,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const currentTabId = getTabIdFromPath(window.location.pathname);
     setActiveTab(currentTabId);
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -46,7 +54,7 @@ const AdminDashboard = () => {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [user]);
+  }, []);
 
   const currentRoute = adminRoutes.find(r => r.id === activeTab) || adminRoutes[0];
 
@@ -55,6 +63,8 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case 'users':
         return <UserManagement />;
+      case 'notifications':
+        return <Notifications />;
       case 'vacations':
         return <VacationManagement />;
       case 'raportet':

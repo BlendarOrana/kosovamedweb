@@ -127,3 +127,30 @@ export const removeUserPushToken = async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+export const sendNotificationToUser = async (req, res) => {
+  try {
+    //
+    const { userId, title, body, data } = req.body;
+
+    // 1. Validate the input
+    if (!userId || !title || !body) {
+      return res.status(400).json({ error: 'userId, title, and body are required' });
+    }
+
+    // 2. Call the service function to send the notification
+    const result = await NotificationService.sendPushNotification(userId, title, body, data);
+
+    // 3. Respond based on the service's result
+    if (result.success) {
+      res.status(200).json({ message: 'Notification sent successfully!' });
+    } else {
+      // If the service failed (e.g., no push token), send a specific error
+      res.status(404).json({ error: result.message || 'Failed to send notification' });
+    }
+
+  } catch (error) {
+    console.error('Error in sendNotificationToUser controller:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

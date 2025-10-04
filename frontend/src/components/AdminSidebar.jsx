@@ -1,11 +1,13 @@
 import { useState, memo } from "react";
-import { FiUsers, FiChevronLeft, FiChevronRight, FiLogOut, FiBarChart2, FiCalendar } from "react-icons/fi";
+import { FiUsers, FiChevronLeft, FiChevronRight, FiLogOut, FiBarChart2, FiCalendar, FiBell } from "react-icons/fi";
 import { DiellLogo } from 'diell-logo';
 import { useUserStore } from "../stores/useUserStore";
 import clsx from 'clsx';
 
+// UPDATED: Added notifications item
 const navigationItems = [
   { path: "/admin/users", id: "users", label: "Menaxhimi i përdoruesve", icon: FiUsers, description: "Menaxho llogaritë e përdoruesve" },
+  { path: "/admin/notifications", id: "notifications", label: "Njoftimet", icon: FiBell, description: "Shiko njoftimet e fundit" },
   { path: "/admin/vacations", id: "vacations", label: "Kërkesat për Pushime", icon: FiCalendar, description: "Shqyrto kërkesat e punonjësve" },
   { path: "/admin/raportet", id: "raportet", label: "Raportet", icon: FiBarChart2, description: "Gjenero dhe shkarko raporte" },
 ];
@@ -36,8 +38,8 @@ const NavItem = memo(({ item, isActive, onClick, isCollapsed, unreadCount }) => 
               'text-gray-500 group-hover:text-gray-300': !isActive
             })}
           />
-          {item.id === 'deliveries' && unreadCount > 0 && isCollapsed && (
-            <span className="absolute -top-1 -right-1.5 h-3.5 w-3.5 rounded-full bg-red-500 border-2 border-white" />
+          {item.id === 'notifications' && unreadCount > 0 && isCollapsed && (
+            <span className="absolute -top-1 -right-1.5 h-3.5 w-3.5 rounded-full bg-red-500 border-2 border-gray-800" />
           )}
         </div>
         {!isCollapsed && (
@@ -48,7 +50,7 @@ const NavItem = memo(({ item, isActive, onClick, isCollapsed, unreadCount }) => 
                 {item.description}
               </p>
             </div>
-            {item.id === 'deliveries' && unreadCount > 0 && (
+            {item.id === 'notifications' && unreadCount > 0 && (
               <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center ml-2 flex-shrink-0">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
@@ -104,6 +106,7 @@ const AdminSidebar = ({ activeTab, onNavigate, isCollapsed, setIsCollapsed }) =>
                                 isActive={activeTab === item.id}
                                 onClick={() => handleTabClick(item.id)}
                                 isCollapsed={isCollapsed}
+                                unreadCount={item.id === 'notifications' ? unreadCount : 0}
                             />
                         ))}
                     </ul>
