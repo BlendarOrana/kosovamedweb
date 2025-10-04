@@ -58,21 +58,27 @@ app.use(helmet({
         "blob:",
      
       ],
-      mediaSrc: [
-        "'self'",
+ mediaSrc: [
+  "'self'",
+  "https://d2hjyrsp0ml1qs.cloudfront.net",
+  "https://kosovamed.s3.eu-north-1.amazonaws.com"
+],
+objectSrc: [
+  "'self'",
+  "https://d2hjyrsp0ml1qs.cloudfront.net",
+  "https://kosovamed.s3.eu-north-1.amazonaws.com"
+],
+frameSrc: [
+  "'self'",
+  "https://d2hjyrsp0ml1qs.cloudfront.net"
+],
+connectSrc: [
+  "'self'",
+  "https://d2hjyrsp0ml1qs.cloudfront.net",
+  "https://kosovamed.s3.eu-north-1.amazonaws.com"
+],
+fontSrc: ["'self'", "data:", "https:"],
 
-      ],
-      objectSrc: [
-        "'self'",
-  
-      ],
-      frameSrc: [
-        "'self'",
-      ],
-      connectSrc: [
-        "'self'",
-     
-      ],
       fontSrc: ["'self'", "data:", "https:"],
       manifestSrc: ["'self'"],
       workerSrc: ["'self'", "blob:"],
