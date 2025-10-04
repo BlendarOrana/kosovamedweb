@@ -7,14 +7,7 @@ export const useNotificationStore = create((set) => ({
   // State is now only for tracking the sending process
   sending: false,
 
-  /**
-   * Sends a push notification to a specific user via the backend API.
-   * This is the only function remaining in the store.
-   * @param {object} notificationData - The notification payload.
-   * @param {string} notificationData.userId - The ID of the user to notify.
-   * @param {string} notificationData.title - The title of the notification.
-   * @param {string} notificationData.body - The message body of the notification.
-   */
+
   sendNotification: async (notificationData) => {
     // 1. Set sending state to true to disable the button and show a loader
     set({ sending: true });
