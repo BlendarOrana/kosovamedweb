@@ -14,17 +14,16 @@ import adminRoutes from "./routes/admin.route.js";
 import reportsRoutes from './routes/reports.route.js';
 import attendanceRoutes from './routes/attendance.route.js';
 import notificationRoutes from './routes/notification.route.js';
+import userRoutes from './routes/user.route.js'; // Import the new user route
 
 
 import { testS3Connection } from "./lib/s3.js";
-import { initializeFirebaseAdmin } from "./lib/firebase.js";
 
 import { connectDB } from "./lib/db.js";
 import { sqlInjectionProtection } from './lib/security/postgres.security.js';
 
 dotenv.config();
 
-initializeFirebaseAdmin(); 
 
 
 const app = express();
@@ -157,6 +156,7 @@ app.use("/api/admin", adminRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/users', userRoutes); // Use the new user routes for push token
 
 // Health check endpoint
 app.get('/health', (req, res) => {
