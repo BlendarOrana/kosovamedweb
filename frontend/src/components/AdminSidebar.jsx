@@ -12,7 +12,7 @@ const navigationItems = [
   { path: "/admin/raportet", id: "raportet", label: "Raportet", icon: FiBarChart2, description: "Gjenero dhe shkarko raporte" },
 ];
 
-const NavItem = memo(({ item, isActive, onClick, isCollapsed, unreadCount }) => {
+const NavItem = memo(({ item, isActive, onClick, isCollapsed }) => {
   const Icon = item.icon;
   return (
     <li>
@@ -38,9 +38,7 @@ const NavItem = memo(({ item, isActive, onClick, isCollapsed, unreadCount }) => 
               'text-gray-500 group-hover:text-gray-300': !isActive
             })}
           />
-          {item.id === 'notifications' && unreadCount > 0 && isCollapsed && (
-            <span className="absolute -top-1 -right-1.5 h-3.5 w-3.5 rounded-full bg-red-500 border-2 border-gray-800" />
-          )}
+
         </div>
         {!isCollapsed && (
           <div className="flex-1 min-w-0 flex items-center justify-between">
@@ -50,11 +48,7 @@ const NavItem = memo(({ item, isActive, onClick, isCollapsed, unreadCount }) => 
                 {item.description}
               </p>
             </div>
-            {item.id === 'notifications' && unreadCount > 0 && (
-              <span className="bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center ml-2 flex-shrink-0">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
+ 
           </div>
         )}
       </button>
@@ -106,7 +100,6 @@ const AdminSidebar = ({ activeTab, onNavigate, isCollapsed, setIsCollapsed }) =>
                                 isActive={activeTab === item.id}
                                 onClick={() => handleTabClick(item.id)}
                                 isCollapsed={isCollapsed}
-                                unreadCount={item.id === 'notifications' ? unreadCount : 0}
                             />
                         ))}
                     </ul>
