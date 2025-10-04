@@ -17,16 +17,11 @@ const adminRoutes = [
 
 const AdminDashboard = () => {
   const { user } = useUserStore();
-  const fetchNotifications = useNotificationStore(state => state.fetchNotifications); // Get fetch function
   
   const [activeTab, setActiveTab] = useState("users");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  useEffect(() => {
-    if(user) {
-      fetchNotifications();
-    }
-  }, [user, fetchNotifications])
+
 
   const getTabIdFromPath = (path) => {
     const route = adminRoutes.find(r => r.path === path);
