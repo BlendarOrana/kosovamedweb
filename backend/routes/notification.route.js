@@ -1,12 +1,13 @@
 // routes/notification.route.js
 import express from 'express';
-import { protectRoute } from '../middleware/auth.middleware.js';
+import { protectRoute,adminRoute } from '../middleware/auth.middleware.js';
 import {
   updateUserPushToken,
   getUserNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
-  removeUserPushToken
+  removeUserPushToken,
+  sendNotificationToUser
 } from '../controllers/notification.controller.js';
 
 const router = express.Router();
@@ -23,5 +24,7 @@ router.patch('/:id/read', protectRoute, markNotificationAsRead);
 
 // Matches PATCH /api/notifications/read-all
 router.patch('/read-all', protectRoute, markAllNotificationsAsRead);
+router.post('/send', protectRoute, adminRoute, sendNotificationToUser);
+
 
 export default router;
