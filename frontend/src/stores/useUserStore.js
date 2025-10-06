@@ -6,7 +6,9 @@ export const useUserStore = create((set, get) => ({
   user: null,
   loading: false,
   checkingAuth: false,
-  signupSuccess: false, // New state to track successful signup
+  signupSuccess: false,
+  regions: [],
+  titles: [],
 
   // Reset signup success state (useful after navigation)
   resetSignupSuccess: () => set({ signupSuccess: false }),
@@ -17,7 +19,11 @@ export const useUserStore = create((set, get) => ({
       const res = await axios.post("/auth/login", { name, password });
       set({ user: res.data, loading: false });
       
-
+      // Fetch regions and titles if user is admin
+      if (res.data.role === 'admin') {
+        get().fetchRegions();
+        get().fetchTitles();
+      }
       
       return true;
     } catch (error) {
@@ -27,11 +33,10 @@ export const useUserStore = create((set, get) => ({
     }
   },
 
-
   logout: async () => {
     try {
       await axios.post("/auth/logout");
-      set({ user: null, shops: [] }); // Clear shops on logout
+      set({ user: null, shops: [], regions: [], titles: [] });
     } catch (error) {
       toast.error(error.response?.data?.message || "An error occurred during logout");
     }
@@ -43,12 +48,38 @@ export const useUserStore = create((set, get) => ({
       const response = await axios.get("/auth/profile");
       set({ user: response.data, checkingAuth: false });
       
-   
+      // Fetch regions and titles if user is admin
+      if (response.data.role === 'admin') {
+        get().fetchRegions();
+        get().fetchTitles();
+      }
     } catch (error) {
       console.log(error.message);
       set({ checkingAuth: false, user: null });
     }
   },
 
+  fetchRegions: async () => {
+    try {
+      const response = await axios.get("/auth/regions");
+      if (response.data.success) {
+        set({ regions: response.data.data });
+      }
+    } catch (error) {
+      console.error("Error fetching regions:", error);
+      toast.error("Failed to fetch regions");
+    }
+  },
 
+  fetchTitles: async () => {
+    try {
+      const response = await axios.get("/auth/titles");
+      if (response.data.success) {
+        set({ titles: response.data.data });
+      }
+    } catch (error) {
+      console.error("Error fetching titles:", error);
+      toast.error("Failed to fetch titles");
+    }
+  },
 }));

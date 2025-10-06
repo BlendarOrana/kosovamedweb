@@ -8,7 +8,7 @@ export const useReportsStore = create((set, get) => ({
   
   // Download attendance report
   downloadAttendanceReport: async (params = {}) => {
-    const { startDate, endDate, username } = params;
+    const { startDate, endDate, username, region, title } = params;
     set({ loading: true, downloadProgress: 0 });
     
     try {
@@ -17,6 +17,8 @@ export const useReportsStore = create((set, get) => ({
       if (startDate) queryParams.append('startDate', startDate);
       if (endDate) queryParams.append('endDate', endDate);
       if (username) queryParams.append('username', username);
+      if (region) queryParams.append('region', region);
+      if (title) queryParams.append('title', title);
       
       const response = await axios.get(`/reports/attendance-excel?${queryParams.toString()}`, {
         responseType: 'blob',
@@ -63,13 +65,15 @@ export const useReportsStore = create((set, get) => ({
   
   // Download vacation report
   downloadVacationReport: async (params = {}) => {
-    const { status, username } = params;
+    const { status, username, region, title } = params;
     set({ loading: true, downloadProgress: 0 });
     
     try {
       const queryParams = new URLSearchParams();
       if (status) queryParams.append('status', status);
       if (username) queryParams.append('username', username);
+      if (region) queryParams.append('region', region);
+      if (title) queryParams.append('title', title);
       
       const response = await axios.get(`/reports/vacation-excel?${queryParams.toString()}`, {
         responseType: 'blob',
@@ -114,13 +118,16 @@ export const useReportsStore = create((set, get) => ({
   
   // Download summary report
   downloadSummaryReport: async (params = {}) => {
-    const { startDate, endDate } = params;
+    const { startDate, endDate, username, region, title } = params;
     set({ loading: true, downloadProgress: 0 });
     
     try {
       const queryParams = new URLSearchParams();
       if (startDate) queryParams.append('startDate', startDate);
       if (endDate) queryParams.append('endDate', endDate);
+      if (username) queryParams.append('username', username);
+      if (region) queryParams.append('region', region);
+      if (title) queryParams.append('title', title);
       
       const response = await axios.get(`/reports/summary-excel?${queryParams.toString()}`, {
         responseType: 'blob',
