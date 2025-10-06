@@ -3,6 +3,8 @@ import { promisePool } from "../lib/db.js";
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 dotenv.config();
+import { getFileUrl } from '../lib/s3.js'; // **Step 1: Import your s3 helper**
+
 
 const ACCESS_TOKEN_EXPIRY_SECONDS = 24 * 60 * 60; // 24 hours in seconds
 const MOBILE_TOKEN_EXPIRY = "1y"; // 1 year for mobile
@@ -100,7 +102,6 @@ export const login = async (req, res) => {
   }
 };
 
-// Mobile login with push token support
 export const mobileLogin = async (req, res) => {
   const { name, password, pushToken, deviceType } = req.body;
 
@@ -123,8 +124,8 @@ export const mobileLogin = async (req, res) => {
       if (pushToken) {
         // Import the Expo SDK to validate token
         const { Expo } = await import('expo-server-sdk');
-        const expo = new Expo();
-        
+        const expo = new new Expo();
+
         if (expo.isExpoPushToken(pushToken)) {
           await promisePool.query(
             'UPDATE users SET push_token = $1, device_type = $2 WHERE id = $3',
@@ -135,9 +136,24 @@ export const mobileLogin = async (req, res) => {
         }
       }
 
+      // **Step 2: Check for contract_url and generate the accessible URL**
+      let contractUrl = null;
+      if (user.contract_url) {
+        try {
+            const fileUrlResult = await getFileUrl(user.contract_url);
+            if (fileUrlResult) {
+                contractUrl = fileUrlResult.url;
+            }
+        } catch (error) {
+            console.error("Error generating file URL for contract:", error.message);
+            // Decide if you want to fail the login or just return null for the URL
+        }
+      }
+
       // Generate token with longer expiry for mobile
       const accessToken = generateAccessToken(user.id, true);
 
+      // **Step 3: Add the contract_url to the user object in the response**
       res.json({
         message: "Login successful",
         token: accessToken,
@@ -147,7 +163,8 @@ export const mobileLogin = async (req, res) => {
           name: user.name,
           number: user.number,
           role: user.role,
-          active: user.active
+          active: user.active,
+          contract_url: contractUrl // Add the new field here
         }
       });
     } else {
@@ -159,6 +176,7 @@ export const mobileLogin = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 // Update push token endpoint (for when app refreshes token)
 export const updatePushToken = async (req, res) => {
