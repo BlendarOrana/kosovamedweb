@@ -8,6 +8,8 @@ import {
   logout, 
   getProfile, 
   getAllUsers,
+  getTitles,
+  getRegions
 } from '../controllers/auth.controller.js';
 import { protectRoute, adminRoute } from "../middleware/auth.middleware.js";
 
@@ -19,6 +21,8 @@ router.post('/login', login);
 router.post('/logout', protectRoute, logout);  
 router.get('/profile', protectRoute, getProfile);
 router.get('/users', protectRoute, adminRoute, getAllUsers);
+router.get('/regions', protectRoute, adminRoute, getRegions);
+router.get('/titles',protectRoute,adminRoute,getTitles)
 
 // Mobile routes
 router.post('/mobile-login', mobileLogin);

@@ -1,108 +1,359 @@
-// components/Notifications.jsx
 import React, { useState } from "react";
 import { useNotificationStore } from "../stores/useNotificationStore";
-import { FiSend } from "react-icons/fi";
+import { useUserStore } from "../stores/useUserStore";
+import { FiSend, FiUsers, FiGlobe, FiUser, FiBarChart2 } from "react-icons/fi";
 
-// The component is now a dedicated form for sending notifications.
 const Notifications = () => {
-  // We only get the 'sending' state and 'sendNotification' function from the store.
-  const { sending, sendNotification } = useNotificationStore();
-  
-  // Local state to manage the form inputs
-  const [userId, setUserId] = useState('');
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+  const [activeTab, setActiveTab] = useState("single");
 
-  // Handle the form submission
+  return (
+    <div className="max-w-4xl mx-auto p-6 bg-gray-50 rounded-xl shadow-lg">
+      <div className="flex items-center justify-between mb-6 border-b pb-4">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Dërgo Njoftime
+        </h1>
+        <FiBarChart2
+          className="text-gray-500 hover:text-cyan-600 cursor-pointer"
+          size={24}
+        />
+      </div>
+
+      {/* Tabs for different notification types */}
+      <div className="flex border-b border-gray-200">
+        <TabButton
+          icon={<FiUser />}
+          label="Një Përdorues"
+          isActive={activeTab === "single"}
+          onClick={() => setActiveTab("single")}
+        />
+        <TabButton
+          icon={<FiUsers />}
+          label="Grup"
+          isActive={activeTab === "batch"}
+          onClick={() => setActiveTab("batch")}
+        />
+        <TabButton
+          icon={<FiGlobe />}
+          label="Të Gjithë Përdoruesit"
+          isActive={activeTab === "all"}
+          onClick={() => setActiveTab("all")}
+        />
+      </div>
+
+      {/* Render the active tab's content */}
+      <div className="pt-6">
+        {activeTab === "single" && <SingleUserForm />}
+        {activeTab === "batch" && <BatchForm />}
+        {activeTab === "all" && <AllUsersForm />}
+      </div>
+    </div>
+  );
+};
+
+/*
+ * Individual Form Components
+ */
+const SingleUserForm = () => {
+  const { sending, sendNotification, sendNotificationByName } =
+    useNotificationStore();
+  const [sendMethod, setSendMethod] = useState("id"); // 'id' or 'name'
+  const [recipient, setRecipient] = useState("");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Call the function from our store
-    const result = await sendNotification({ userId, title, body });
-    
-    // If the notification was sent successfully, clear the form for the next one
+    const notificationData = { title, body };
+
+    if (sendMethod === "id") {
+      notificationData.userId = recipient;
+      await sendNotification(notificationData);
+    } else {
+      notificationData.userName = recipient;
+      await sendNotificationByName(notificationData);
+    }
+
+    // Clear form on success
+    setRecipient("");
+    setTitle("");
+    setBody("");
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Recipient Field */}
+        <InputField
+          id="recipient"
+          label={`Përdoruesi sipas ${sendMethod === "id" ? "ID-së" : "Emrit"}`}
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+          placeholder={`Vendos ${sendMethod === "id" ? "ID-në" : "Emrin"} e Përdoruesit`}
+        />
+        {/* Title Field */}
+        <InputField
+          id="title"
+          label="Titulli"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="p.sh., Përditësim i Rëndësishëm i Llogarisë"
+        />
+      </div>
+      {/* Body Field */}
+      <TextareaField
+        id="body"
+        label="Mesazhi"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Shkruani mesazhin kryesor..."
+      />
+      {/* Send Method Toggle */}
+      <div className="flex items-center space-x-4">
+        <label className="text-sm font-medium text-gray-700">Dërgo me:</label>
+        <RadioOption
+          id="send-by-id"
+          label="ID"
+          checked={sendMethod === "id"}
+          onChange={() => setSendMethod("id")}
+        />
+        <RadioOption
+          id="send-by-name"
+          label="Emër"
+          checked={sendMethod === "name"}
+          onChange={() => setSendMethod("name")}
+        />
+      </div>
+
+      <SubmitButton isSending={sending} text="Dërgo Njoftimin" />
+    </form>
+  );
+};
+
+const BatchForm = () => {
+  const { batchSending, sendBatchNotifications } = useNotificationStore();
+  const { regions, titles } = useUserStore();
+  const [target, setTarget] = useState("role"); // 'role' or 'region'
+  const [selectedValue, setSelectedValue] = useState("");
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const batchData = {
+      title,
+      body,
+      ...(target === "role" && { role: selectedValue }),
+      ...(target === "region" && { region: selectedValue }),
+    };
+
+    const result = await sendBatchNotifications(batchData);
     if (result.success) {
-      setUserId('');
-      setTitle('');
-      setBody('');
+      setSelectedValue("");
+      setTitle("");
+      setBody("");
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white rounded-xl shadow-lg">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6 border-b pb-4">
-        Send a Push Notification
-      </h1>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Target Field */}
+        <SelectField
+          id="target-type"
+          label="Targeto sipas"
+          value={target}
+          onChange={(e) => {
+            setTarget(e.target.value);
+            setSelectedValue(""); // Reset selection on change
+          }}
+          options={[
+            { value: "role", label: "Titulli" },
+            { value: "region", label: "Regjioni" },
+          ]}
+        />
+        {/* Dynamic Select for Role/Region */}
+        <SelectField
+          id="target-value"
+          label={`Zgjidh ${target === "role" ? "Rolin" : "Regjionin"}`}
+          value={selectedValue}
+          onChange={(e) => setSelectedValue(e.target.value)}
+          options={
+            target === "role"
+              ? titles.map((t) => ({ value: t, label: t }))
+              : regions.map((r) => ({ value: r, label: r }))
+          }
+        />
+      </div>
+      <InputField
+        id="batch-title"
+        label="Titulli"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="p.sh., Promocion Special për Regjionin tuaj"
+      />
+      <TextareaField
+        id="batch-body"
+        label="Mesazhi"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Shkruani mesazhin kryesor për grupin..."
+      />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* User ID Field */}
-        <div>
-          <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
-            User ID
-          </label>
-          <input
-            id="userId"
-            type="text"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            placeholder="Enter the recipient's User ID"
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-          />
-        </div>
-
-        {/* Title Field */}
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-            Notification Title
-          </label>
-          <input
-            id="title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g., Important Account Update"
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-          />
-        </div>
-
-        {/* Body Field */}
-        <div>
-          <label htmlFor="body" className="block text-sm font-medium text-gray-700 mb-1">
-            Notification Body
-          </label>
-          <textarea
-            id="body"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={4}
-            placeholder="Enter the main message for the user."
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-          />
-        </div>
-
-        {/* Submit Button */}
-        <div>
-          <button
-            type="submit"
-            disabled={sending}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {sending ? (
-              'Sending...'
-            ) : (
-              <>
-                <FiSend size={18} />
-                Send Notification
-              </>
-            )}
-          </button>
-        </div>
-      </form>
-    </div>
+      <SubmitButton isSending={batchSending} text="Dërgo Njoftim Grupit" />
+    </form>
   );
 };
+
+const AllUsersForm = () => {
+  const { batchSending, sendToAllUsers } = useNotificationStore();
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const result = await sendToAllUsers({ title, body });
+    if (result.success) {
+      setTitle("");
+      setBody("");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <InputField
+        id="all-users-title"
+        label="Titulli"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="p.sh., Njoftim i Rëndësishëm"
+      />
+      <TextareaField
+        id="all-users-body"
+        label="Mesazhi"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Ky mesazh do t'u dërgohet të gjithë përdoruesve aktivë."
+      />
+
+      <div className="!mt-8 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
+        <p className="font-bold">Kujdes!</p>
+        <p>Ky veprim do t'i dërgojë një njoftim të gjithë përdoruesve aktivë.</p>
+      </div>
+      <SubmitButton isSending={batchSending} text="Dërgo të Gjithë Përdoruesve" />
+    </form>
+  );
+};
+
+/*
+ * Reusable UI Components
+ */
+const TabButton = ({ icon, label, isActive, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-all
+      ${
+        isActive
+          ? "bg-cyan-600 text-white"
+          : "text-gray-600 hover:bg-gray-200"
+      }`}
+  >
+    {icon}
+    {label}
+  </button>
+);
+
+const InputField = ({ id, label, ...props }) => (
+  <div>
+    <label
+      htmlFor={id}
+      className="block text-sm font-medium text-gray-700 mb-1"
+    >
+      {label}
+    </label>
+    <input
+      id={id}
+      type="text"
+      required
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+      {...props}
+    />
+  </div>
+);
+
+const TextareaField = ({ id, label, ...props }) => (
+  <div>
+    <label
+      htmlFor={id}
+      className="block text-sm font-medium text-gray-700 mb-1"
+    >
+      {label}
+    </label>
+    <textarea
+      id={id}
+      rows={4}
+      required
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
+      {...props}
+    />
+  </div>
+);
+
+const SelectField = ({ id, label, options = [], ...props }) => (
+  <div>
+    <label
+      htmlFor={id}
+      className="block text-sm font-medium text-gray-700 mb-1"
+    >
+      {label}
+    </label>
+    <select
+      id={id}
+      required
+      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition bg-white"
+      {...props}
+    >
+      <option value="">
+        Zgjidh një opsion
+      </option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
+const RadioOption = ({ id, label, ...props }) => (
+  <div className="flex items-center">
+    <input
+      id={id}
+      type="radio"
+      name="send-method"
+      className="focus:ring-cyan-500 h-4 w-4 text-cyan-600 border-gray-300"
+      {...props}
+    />
+    <label htmlFor={id} className="ml-2 block text-sm text-gray-900">
+      {label}
+    </label>
+  </div>
+);
+
+const SubmitButton = ({ isSending, text }) => (
+  <button
+    type="submit"
+    disabled={isSending}
+    className="w-full flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
+  >
+    {isSending ? (
+      "Duke dërguar..."
+    ) : (
+      <>
+        <FiSend size={18} />
+        {text}
+      </>
+    )}
+  </button>
+);
 
 export default Notifications;

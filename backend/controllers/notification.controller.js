@@ -7,10 +7,8 @@ import NotificationService from '../services/notification.service.js';
  */
 export const updateUserPushToken = async (req, res) => {
   try {
-    // The endpoint in the frontend is /api/users/push-token, but the body contains push_token.
-    // Let's stick to the frontend's store implementation.
     const { push_token, platform } = req.body;
-    const userId = req.user.id; // comes from protectRoute middleware
+    const userId = req.user.id;
 
     if (!push_token) {
       return res.status(400).json({ error: 'Push token is required' });
@@ -46,11 +44,9 @@ export const getUserNotifications = async (req, res) => {
       [userId, limit, offset]
     );
 
-    // Frontend store expects `product_id`, `product_name` directly in the notification object
-    // We can parse the `data` field to provide this
     const formattedNotifications = result.rows.map(n => ({
       id: n.id,
-      type: n.data?.type || 'general', // Assuming type is stored in data
+      type: n.data?.type || 'general',
       title: n.title,
       body: n.body,
       is_read: n.is_read,
@@ -118,39 +114,188 @@ export const markAllNotificationsAsRead = async (req, res) => {
  * Removes the push token for a user, typically on logout.
  */
 export const removeUserPushToken = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        await NotificationService.removeUserPushToken(userId);
-        res.status(200).json({ message: 'Push token removed successfully' });
-    } catch (error) {
-        console.error('Error removing push token:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
+  try {
+    const userId = req.user.id;
+    await NotificationService.removeUserPushToken(userId);
+    res.status(200).json({ message: 'Push token removed successfully' });
+  } catch (error) {
+    console.error('Error removing push token:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
 
+/**
+ * Send notification to a single user by ID
+ */
 export const sendNotificationToUser = async (req, res) => {
   try {
-    //
     const { userId, title, body, data } = req.body;
 
-    // 1. Validate the input
     if (!userId || !title || !body) {
       return res.status(400).json({ error: 'userId, title, and body are required' });
     }
 
-    // 2. Call the service function to send the notification
     const result = await NotificationService.sendPushNotification(userId, title, body, data);
 
-    // 3. Respond based on the service's result
     if (result.success) {
       res.status(200).json({ message: 'Notification sent successfully!' });
     } else {
-      // If the service failed (e.g., no push token), send a specific error
       res.status(404).json({ error: result.message || 'Failed to send notification' });
     }
-
   } catch (error) {
     console.error('Error in sendNotificationToUser controller:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * Send notification to a user by their name
+ */
+export const sendNotificationByName = async (req, res) => {
+  try {
+    const { userName, title, body, data } = req.body;
+
+    if (!userName || !title || !body) {
+      return res.status(400).json({ error: 'userName, title, and body are required' });
+    }
+
+    const result = await NotificationService.sendPushNotificationByName(userName, title, body, data);
+
+    if (result.success) {
+      res.status(200).json({ message: 'Notification sent successfully!' });
+    } else {
+      res.status(404).json({ error: result.message || 'Failed to send notification' });
+    }
+  } catch (error) {
+    console.error('Error in sendNotificationByName controller:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * Send batch notifications to users by role or region
+ */
+export const sendBatchNotifications = async (req, res) => {
+  try {
+    const { role, region, title, body, data, batchSize = 50, delayMs = 1000 } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({ error: 'title and body are required' });
+    }
+
+    if (!role && !region) {
+      return res.status(400).json({ error: 'Either role or region must be specified' });
+    }
+
+    const filter = {};
+    if (role) filter.role = role;
+    if (region) filter.region = region;
+
+    const result = await NotificationService.sendBatchNotifications(
+      filter,
+      title,
+      body,
+      data,
+      batchSize,
+      delayMs
+    );
+
+    if (result.success) {
+      res.status(200).json({
+        message: result.message,
+        stats: {
+          totalUsers: result.totalUsers,
+          sentCount: result.sentCount,
+          failedCount: result.failedCount,
+          failedUsers: result.failedUsers
+        }
+      });
+    } else {
+      res.status(result.totalUsers === 0 ? 404 : 207).json({
+        error: result.message,
+        stats: {
+          totalUsers: result.totalUsers,
+          sentCount: result.sentCount,
+          failedCount: result.failedCount,
+          failedUsers: result.failedUsers
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error in sendBatchNotifications controller:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * Send notification to all active users
+ */
+export const sendNotificationToAll = async (req, res) => {
+  try {
+    const { title, body, data, batchSize = 50, delayMs = 1000 } = req.body;
+
+    if (!title || !body) {
+      return res.status(400).json({ error: 'title and body are required' });
+    }
+
+    const result = await NotificationService.sendToAllUsers(
+      title,
+      body,
+      data,
+      batchSize,
+      delayMs
+    );
+
+    if (result.success) {
+      res.status(200).json({
+        message: result.message,
+        stats: {
+          totalUsers: result.totalUsers,
+          sentCount: result.sentCount,
+          failedCount: result.failedCount,
+          failedUsers: result.failedUsers
+        }
+      });
+    } else {
+      res.status(result.totalUsers === 0 ? 404 : 207).json({
+        error: result.message,
+        stats: {
+          totalUsers: result.totalUsers,
+          sentCount: result.sentCount,
+          failedCount: result.failedCount,
+          failedUsers: result.failedUsers
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error in sendNotificationToAll controller:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+/**
+ * Get notification statistics for admin dashboard
+ */
+export const getNotificationStats = async (req, res) => {
+  try {
+    const statsQuery = `
+      SELECT 
+        COUNT(DISTINCT u.id) as total_users,
+        COUNT(DISTINCT CASE WHEN u.push_token IS NOT NULL THEN u.id END) as users_with_tokens,
+        COUNT(DISTINCT n.id) as total_notifications,
+        COUNT(DISTINCT CASE WHEN n.is_read = false THEN n.id END) as unread_notifications
+      FROM users u
+      LEFT JOIN notifications n ON u.id = n.user_id
+      WHERE u.active = true
+    `;
+
+    const result = await promisePool.query(statsQuery);
+
+    res.status(200).json({
+      stats: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error fetching notification stats:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 };

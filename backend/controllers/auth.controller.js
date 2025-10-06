@@ -283,3 +283,66 @@ export const getAllUsers = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch users", error: error.message });
   }
 };
+
+
+
+
+// Get all unique regions
+export const getRegions = async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT region 
+      FROM users 
+      WHERE region IS NOT NULL 
+        AND region != '' 
+      ORDER BY region ASC
+    `;
+
+    const result = await promisePool.query(query);
+
+    const regions = result.rows.map(row => row.region);
+
+    res.status(200).json({
+      success: true,
+      count: regions.length,
+      data: regions
+    });
+
+  } catch (error) {
+    console.error("Error fetching regions:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error fetching regions" 
+    });
+  }
+};
+
+// Get all unique titles
+export const getTitles = async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT title 
+      FROM users 
+      WHERE title IS NOT NULL 
+        AND title != '' 
+      ORDER BY title ASC
+    `;
+
+    const result = await promisePool.query(query);
+
+    const titles = result.rows.map(row => row.title);
+
+    res.status(200).json({
+      success: true,
+      count: titles.length,
+      data: titles
+    });
+
+  } catch (error) {
+    console.error("Error fetching titles:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error fetching titles" 
+    });
+  }
+};

@@ -50,28 +50,7 @@ VitePWA({
     skipWaiting: true,
     clientsClaim: true,
   },
-  manifest: {
-        name: 'Transport Service 67',
-        short_name: 'TS67',
-        description: 'Service professionnel de livraison et montage de meubles en Alsace par Transport Service 67.',
-        theme_color: '#E30613',
-        background_color: '#ffffff',
-        display: 'standalone',
-        start_url: '/',
-        scope: '/',
-        icons: [
-          {
-            src: '192.png',
-            sizes: '192x192',
-            type: 'image/png',
-          },
-          {
-            src: '512.png',
-            sizes: '512x512',
-            type: 'image/png',
-          },
-        ],
-      },
+
     })
   ],
 

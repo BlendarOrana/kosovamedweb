@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, memo } from 'react';
 import { FiDownload, FiCalendar, FiClock, FiBarChart2, FiInfo, FiLoader } from 'react-icons/fi';
 import { useReportsStore } from '../stores/useReportsStore';
+import { useUserStore } from '../stores/useUserStore';
 import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
@@ -97,51 +98,82 @@ const ReportCard = memo(({ report, onDownload, isLoading }) => {
 
 const Reports = () => {
   const { downloadAttendanceReport, downloadVacationReport, downloadSummaryReport, loading } = useReportsStore();
+  const { regions, titles } = useUserStore();
 
   const handleDownloadAttendance = useCallback(f => downloadAttendanceReport(f), [downloadAttendanceReport]);
   const handleDownloadVacation = useCallback(f => downloadVacationReport(f), [downloadVacationReport]);
   const handleDownloadSummary = useCallback(f => downloadSummaryReport(f), [downloadSummaryReport]);
 
+  // Prepare region options
+  const regionOptions = [
+    { value: '', label: 'Të gjitha Rajonet' },
+    ...regions.map(region => ({ value: region, label: region }))
+  ];
+
+  // Prepare title options
+  const titleOptions = [
+    { value: '', label: 'Të gjitha Titujt' },
+    ...titles.map(title => ({ value: title, label: title }))
+  ];
+
   const reportDefinitions = [
     {
-      id: 'attendance', title: 'Raporti i Pranisë', description: 'Gjurmoni hyrjet, daljet dhe orët e punës.',
-      icon: FiClock, initialFilters: { startDate: '', endDate: '', username: '' },
+      id: 'attendance', 
+      title: 'Raporti i Pranisë', 
+      description: 'Gjurmoni hyrjet, daljet dhe orët e punës.',
+      icon: FiClock, 
+      initialFilters: { startDate: '', endDate: '', username: '', region: '', title: '' },
       onDownload: handleDownloadAttendance,
       fields: [
         { key: 'startDate', label: 'Nga data', type: 'date' },
         { key: 'endDate', label: 'Deri më datë', type: 'date' },
         { key: 'username', label: 'Emri i Përdoruesit (opsional)', type: 'text', placeholder: 'e.g., filan.fisteku' },
+        { key: 'region', label: 'Rajoni (opsional)', type: 'select', options: regionOptions },
+        { key: 'title', label: 'Titulli (opsional)', type: 'select', options: titleOptions },
       ],
     },
     {
-      id: 'vacation', title: 'Raporti i Pushimeve', description: 'Eksportoni statusin e kërkesave për leje.',
-      icon: FiCalendar, initialFilters: { status: '', username: '' },
+      id: 'vacation', 
+      title: 'Raporti i Pushimeve', 
+      description: 'Eksportoni statusin e kërkesave për leje.',
+      icon: FiCalendar, 
+      initialFilters: { status: '', username: '', region: '', title: '' },
       onDownload: handleDownloadVacation,
       fields: [
         {
           key: 'status', label: 'Statusi', type: 'select',
           options: [
-            { value: '', label: 'Të gjitha Statuset' }, { value: 'pending', label: 'Në Pritje' },
-            { value: 'approved', label: 'Të Miratuara' }, { value: 'rejected', label: 'Të Refuzuara' },
+            { value: '', label: 'Të gjitha Statuset' }, 
+            { value: 'pending', label: 'Në Pritje' },
+            { value: 'approved', label: 'Të Miratuara' }, 
+            { value: 'rejected', label: 'Të Refuzuara' },
           ],
         },
         { key: 'username', label: 'Emri i Përdoruesit (opsional)', type: 'text', placeholder: 'e.g., filan.fisteku' },
+        { key: 'region', label: 'Rajoni (opsional)', type: 'select', options: regionOptions },
+        { key: 'title', label: 'Titulli (opsional)', type: 'select', options: titleOptions },
       ],
     },
   ];
 
   const summaryReportDefinition = {
-    id: 'summary', title: 'Raporti Përmbledhës', description: 'Statistika agregate të performancës.',
-    icon: FiBarChart2, initialFilters: { startDate: '', endDate: '' },
+    id: 'summary', 
+    title: 'Raporti Përmbledhës', 
+    description: 'Statistika agregate të performancës.',
+    icon: FiBarChart2, 
+    initialFilters: { startDate: '', endDate: '', username: '', region: '', title: '' },
     onDownload: handleDownloadSummary,
     fields: [
       { key: 'startDate', label: 'Nga data', type: 'date' },
       { key: 'endDate', label: 'Deri më datë', type: 'date' },
+      { key: 'username', label: 'Emri i Përdoruesit (opsional)', type: 'text', placeholder: 'e.g., filan.fisteku' },
+      { key: 'region', label: 'Rajoni (opsional)', type: 'select', options: regionOptions },
+      { key: 'title', label: 'Titulli (opsional)', type: 'select', options: titleOptions },
     ],
   };
 
   return (
-    <div className=" min-h-full p-4 sm:p-6 lg:p-8">
+    <div className="min-h-full p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -157,7 +189,7 @@ const Reports = () => {
               </div>
               <div className="space-y-4 text-sm text-gray-300">
                 <p><strong className="font-medium text-white">1. Zgjidhni Raportin:</strong> Përdorni një nga kartat në të majtë për të zgjedhur llojin e raportit.</p>
-                <p><strong className="font-medium text-white">2. Aplikoni Filtrat:</strong> Përcaktoni intervalet e datave, emrat e përdoruesve ose statuset. Lënia bosh e një fushe do t'i përfshijë të gjitha të dhënat.</p>
+                <p><strong className="font-medium text-white">2. Aplikoni Filtrat:</strong> Përcaktoni intervalet e datave, emrat e përdoruesve, rajonet, ose titujt. Lënia bosh e një fushe do t'i përfshijë të gjitha të dhënat.</p>
                 <p><strong className="font-medium text-white">3. Shkarkoni:</strong> Shtypni butonin "Shkarko Raportin" për të gjeneruar dhe shkarkuar skedarin Excel.</p>
               </div>
             </div>
