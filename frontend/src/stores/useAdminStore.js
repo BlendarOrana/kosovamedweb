@@ -7,13 +7,34 @@ export const useAdminStore = create((set, get) => ({
   currentUser: null,
   loading: false,
   error: null,
+  usersLoaded: false, // Add flag to track if users have been loaded
   
-  // Get all users
+  // Get all users (with caching)
   getAllUsers: async () => {
+    // If users are already loaded, skip the API call
+    if (get().usersLoaded && get().users.length > 0) {
+      return;
+    }
+    
     set({ loading: true });
     try {
       const res = await axios.get("/admin/users");
-      set({ users: res.data, loading: false, error: null });
+      set({ users: res.data, loading: false, error: null, usersLoaded: true });
+    } catch (error) {
+      set({ 
+        loading: false, 
+        error: error.response?.data?.message || "Failed to fetch users" 
+      });
+      toast.error(error.response?.data?.message || "Failed to fetch users");
+    }
+  },
+  
+  // Force refresh users (bypass cache)
+  refreshUsers: async () => {
+    set({ loading: true, usersLoaded: false });
+    try {
+      const res = await axios.get("/admin/users");
+      set({ users: res.data, loading: false, error: null, usersLoaded: true });
     } catch (error) {
       set({ 
         loading: false, 
@@ -134,5 +155,10 @@ export const useAdminStore = create((set, get) => ({
   // Clear any errors
   clearError: () => {
     set({ error: null });
+  },
+  
+  // Reset cache (useful for logout or manual refresh)
+  resetUsersCache: () => {
+    set({ users: [], usersLoaded: false });
   }
 }));

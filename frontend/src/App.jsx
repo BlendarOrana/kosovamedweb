@@ -27,12 +27,12 @@ function App() {
 
   // Show loading spinner while checking auth or loading user data
   if (checkingAuth || (user && (user.role === 'admin' || user.role === 'manager') && loadingShops)) {
-    return <LoadingSpinner fullScreen={true} />;
+    return <LoadingSpinner  />;
   }
 
   // Also show loading during login process
   if (loading) {
-    return <LoadingSpinner fullScreen={true} />;
+    return <LoadingSpinner  />;
   }
 
   // Helper function to get the default route for authenticated users
