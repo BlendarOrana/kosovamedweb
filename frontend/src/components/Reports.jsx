@@ -1,198 +1,319 @@
-import { useState, useEffect, useCallback, memo } from 'react';
-import { FiDownload, FiCalendar, FiClock, FiBarChart2, FiInfo, FiLoader } from 'react-icons/fi';
+import { useState, useMemo, useCallback } from 'react';
+import { FiClock, FiCalendar, FiDownload, FiArrowLeft, FiArrowRight, FiCheckCircle, FiLoader, FiBarChart2 } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import clsx from 'clsx';
+// Sigurohuni që të importoni store-et tuaja saktë
 import { useReportsStore } from '../stores/useReportsStore';
 import { useUserStore } from '../stores/useUserStore';
-import { motion } from 'framer-motion';
-import clsx from 'clsx';
 
-const InputField = memo(({ id, label, type, value, onChange, ...props }) => {
+
+// --- Komponentët e ripërdorshëm të UI ---
+
+const InputField = ({ id, label, type, value, onChange, options = [], ...props }) => {
   const commonClasses = 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition placeholder-gray-400';
   return (
     <div>
       <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
       {type === 'select' ? (
         <select id={id} value={value} onChange={onChange} className={commonClasses} {...props}>
-          {props.options.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}
+          {options.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}
         </select>
       ) : (
         <input id={id} type={type} value={value} onChange={onChange} className={commonClasses} {...props} />
       )}
     </div>
   );
-});
+};
 
-const ReportCard = memo(({ report, onDownload, isLoading }) => {
-  const Icon = report.icon;
-  const [filters, setFilters] = useState(report.initialFilters);
+const WizardStep = ({ children }) => (
+  <motion.div
+    initial={{ opacity: 0, x: 50 }}
+    animate={{ opacity: 1, x: 0 }}
+    exit={{ opacity: 0, x: -50 }}
+    transition={{ duration: 0.3 }}
+  >
+    {children}
+  </motion.div>
+);
 
-  useEffect(() => {
-    if (report.initialFilters.startDate !== undefined) {
-      const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      const formatDate = (date) => date.toISOString().split('T')[0];
-      setFilters(prev => ({ ...prev, startDate: formatDate(firstDay), endDate: formatDate(lastDay) }));
-    }
-  }, [report.initialFilters.startDate]);
-
-  const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
-
-  const handleDownloadClick = () => onDownload(filters);
-  const { downloadProgress } = useReportsStore(state => ({ downloadProgress: state.downloadProgress }));
-
-  return (
-    <div className="bg-gray-800/80 backdrop-blur-sm border border-cyan-500/30 rounded-2xl shadow-2xl flex flex-col">
-      <div className="p-6 border-b border-gray-700">
-        <div className="flex items-center space-x-4">
-          <div className="p-3 bg-cyan-500/20 rounded-lg">
-            <Icon className="h-6 w-6 text-cyan-400" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-white">{report.title}</h3>
-            <p className="text-sm text-gray-400 mt-1">{report.description}</p>
-          </div>
+const ProgressBar = ({ currentStep, totalSteps }) => {
+    const progress = (currentStep / totalSteps) * 100;
+    return (
+        <div className="bg-gray-700 rounded-full h-2 mb-8">
+            <motion.div
+                className="bg-cyan-500 h-2 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ ease: "easeInOut", duration: 0.5 }}
+            />
         </div>
-      </div>
-      <div className="p-6 space-y-4 flex-grow">
-        {report.fields.map(field => (
-          <InputField
-            key={field.key}
-            id={`${report.id}-${field.key}`}
-            label={field.label}
-            type={field.type}
-            value={filters[field.key]}
-            onChange={e => handleFilterChange(field.key, e.target.value)}
-            placeholder={field.placeholder}
-            options={field.options}
-          />
-        ))}
-      </div>
-      <div className="p-6 bg-gray-900/40 rounded-b-2xl">
-        <button
-          onClick={handleDownloadClick}
-          disabled={isLoading}
-          className={clsx('w-full flex items-center justify-center px-4 py-2.5 font-bold rounded-lg shadow-lg transition-all duration-300',
-            isLoading ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-cyan-500 text-white hover:bg-cyan-600 '
-          )}
-        >
-          {isLoading ? (
-            <><FiLoader className="animate-spin -ml-1 mr-3 h-5 w-5" /><span>Duke shkarkuar...</span></>
-          ) : (
-            <><FiDownload className="-ml-1 mr-2 h-5 w-5" /><span>Shkarko Raportin</span></>
-          )}
-        </button>
-        {isLoading && downloadProgress > 0 && (
-          <div className="mt-4">
-            <div className="bg-gray-700 rounded-full h-2 overflow-hidden">
-              <motion.div className="bg-cyan-500 h-2 rounded-full" initial={{ width: 0 }} animate={{ width: `${downloadProgress}%` }} transition={{ duration: 0.3 }} />
+    );
+};
+
+
+// --- Hapat e Wizard-it ---
+
+const Step1_SelectReport = ({ onSelect, selectedId, reportDefinitions }) => (
+  <WizardStep>
+    <h2 className="text-2xl font-bold text-white mb-1">Zgjidhni një Raport</h2>
+    <p className="text-gray-400 mb-6">Zgjidhni llojin e raportit që dëshironi të gjeneroni.</p>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {reportDefinitions.map((report) => {
+        const Icon = report.icon;
+        return (
+          <div
+            key={report.id}
+            onClick={() => onSelect(report.id)}
+            className={clsx(
+              'p-6 rounded-lg cursor-pointer border-2 transition-all duration-300',
+              selectedId === report.id ? 'bg-cyan-500/20 border-cyan-500' : 'bg-gray-800 border-gray-700 hover:border-cyan-600'
+            )}
+          >
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gray-700/50 rounded-lg">
+                <Icon className={clsx("h-6 w-6", selectedId === report.id ? "text-cyan-400" : "text-gray-400")} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">{report.title}</h3>
+                <p className="text-sm text-gray-400 mt-1">{report.description}</p>
+              </div>
             </div>
-            <p className="text-xs text-gray-400 text-center mt-1.5">{downloadProgress}% e plotësuar</p>
           </div>
-        )}
-      </div>
+        );
+      })}
     </div>
-  );
-});
+  </WizardStep>
+);
+
+const Step2_ConfigureFilters = ({ report, filters, onFilterChange }) => (
+  <WizardStep>
+    <h2 className="text-2xl font-bold text-white mb-1">Vendos Filtrat</h2>
+    <p className="text-gray-400 mb-6">Specifikoni kriteret për '{report.title}'. Lërini fushat bosh për të përfshirë të gjitha të dhënat.</p>
+    <div className="space-y-4">
+      {report.fields.map((field) => (
+        <InputField
+          key={field.key}
+          id={`${report.id}-${field.key}`}
+          label={field.label}
+          type={field.type}
+          value={filters[field.key] || ''}
+          onChange={(e) => onFilterChange(field.key, e.target.value)}
+          placeholder={field.placeholder}
+          options={field.options}
+        />
+      ))}
+    </div>
+  </WizardStep>
+);
+
+const Step3_Download = ({ report, onDownload, isLoading, downloadProgress }) => {
+    const Icon = report.icon;
+
+    return (
+    <WizardStep>
+        <div className="text-center">
+            <div className="flex justify-center items-center mb-4">
+                <div className="p-4 bg-cyan-500/20 rounded-full">
+                    <Icon className="h-10 w-10 text-cyan-400" />
+                </div>
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-1">Gati për Shkarkim</h2>
+            <p className="text-gray-400 mb-8">Jeni gati të gjeneroni '{report.title}'.</p>
+            
+            <button
+                onClick={onDownload}
+                disabled={isLoading}
+                className={clsx(
+                    'w-full max-w-xs mx-auto flex items-center justify-center px-6 py-3 font-bold rounded-lg shadow-lg transition-all duration-300 text-lg',
+                    isLoading ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-cyan-500 text-white hover:bg-cyan-600'
+                )}
+            >
+                {isLoading ? (
+                    <><FiLoader className="animate-spin -ml-1 mr-3 h-5 w-5" /><span>Duke u shkarkuar...</span></>
+                ) : (
+                    <><FiDownload className="-ml-1 mr-3 h-5 w-5" /><span>Gjenero dhe Shkarko</span></>
+                )}
+            </button>
+            
+            {isLoading && (
+            <div className="mt-6 max-w-xs mx-auto">
+                <div className="bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                    <motion.div
+                        className="bg-cyan-500 h-2.5 rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${downloadProgress}%` }}
+                        transition={{ duration: 0.3 }}
+                    />
+                </div>
+                <p className="text-sm text-gray-400 text-center mt-2">{downloadProgress}% Përfunduar</p>
+            </div>
+            )}
+        </div>
+    </WizardStep>
+    );
+};
+
+
+// --- Komponenti kryesor i Raporteve ---
 
 const Reports = () => {
-  const { downloadAttendanceReport, downloadVacationReport, downloadSummaryReport, loading } = useReportsStore();
+  const [step, setStep] = useState(1);
+  const [selectedReportId, setSelectedReportId] = useState(null);
+  const [filters, setFilters] = useState({});
+
+  // Këto do të vijnë nga store-et tuaja aktuale, jo nga mock
+  const { downloadAttendanceReport, downloadVacationReport, loading, downloadProgress } = useReportsStore();
   const { regions, titles } = useUserStore();
 
-  const handleDownloadAttendance = useCallback(f => downloadAttendanceReport(f), [downloadAttendanceReport]);
-  const handleDownloadVacation = useCallback(f => downloadVacationReport(f), [downloadVacationReport]);
-  const handleDownloadSummary = useCallback(f => downloadSummaryReport(f), [downloadSummaryReport]);
-
-  // Prepare region options
-  const regionOptions = [
+  const regionOptions = useMemo(() => [
     { value: '', label: 'Të gjitha Rajonet' },
-    ...regions.map(region => ({ value: region, label: region }))
-  ];
+    ...regions.map((region) => ({ value: region, label: region })),
+  ], [regions]);
 
-  // Prepare title options
-  const titleOptions = [
-    { value: '', label: 'Të gjitha Titujt' },
-    ...titles.map(title => ({ value: title, label: title }))
-  ];
+  const titleOptions = useMemo(() => [
+    { value: '', label: 'Të gjithë Titujt' },
+    ...titles.map((title) => ({ value: title, label: title })),
+  ], [titles]);
 
-  const reportDefinitions = [
+  const reportDefinitions = useMemo(() => [
     {
       id: 'attendance', 
-      title: 'Raporti i Pranisë', 
-      description: 'Gjurmoni hyrjet, daljet dhe orët e punës.',
+      title: 'Raporti i Pjesëmarrjes', 
+      description: 'Ndiqni hyrjet, daljet dhe orët e punës.',
       icon: FiClock, 
       initialFilters: { startDate: '', endDate: '', username: '', region: '', title: '' },
-      onDownload: handleDownloadAttendance,
+      onDownload: downloadAttendanceReport,
       fields: [
-        { key: 'startDate', label: 'Nga data', type: 'date' },
-        { key: 'endDate', label: 'Deri më datë', type: 'date' },
-        { key: 'username', label: 'Emri i Përdoruesit (opsional)', type: 'text', placeholder: 'e.g., filan.fisteku' },
+        { key: 'startDate', label: 'Data e Fillimit', type: 'date' },
+        { key: 'endDate', label: 'Data e Mbarimit', type: 'date' },
+        { key: 'username', label: 'Përdoruesi (opsional)', type: 'text', placeholder: 'p.sh. filan fisteku' },
         { key: 'region', label: 'Rajoni (opsional)', type: 'select', options: regionOptions },
         { key: 'title', label: 'Titulli (opsional)', type: 'select', options: titleOptions },
       ],
     },
     {
       id: 'vacation', 
-      title: 'Raporti i Pushimeve', 
-      description: 'Eksportoni statusin e kërkesave për leje.',
+      title: 'Raporti i Lejeve', 
+      description: 'Eksportoni statusin e kërkesave për leje të punonjësve.',
       icon: FiCalendar, 
       initialFilters: { status: '', username: '', region: '', title: '' },
-      onDownload: handleDownloadVacation,
+      onDownload: downloadVacationReport,
       fields: [
         {
           key: 'status', label: 'Statusi', type: 'select',
           options: [
             { value: '', label: 'Të gjitha Statuset' }, 
             { value: 'pending', label: 'Në Pritje' },
-            { value: 'approved', label: 'Të Miratuara' }, 
-            { value: 'rejected', label: 'Të Refuzuara' },
+            { value: 'approved', label: 'Miratuar' }, 
+            { value: 'rejected', label: 'Refuzuar' },
           ],
         },
-        { key: 'username', label: 'Emri i Përdoruesit (opsional)', type: 'text', placeholder: 'e.g., filan.fisteku' },
+        { key: 'username', label: 'Përdoruesi (opsional)', type: 'text', placeholder: 'p.sh., gjon.pistolja' },
         { key: 'region', label: 'Rajoni (opsional)', type: 'select', options: regionOptions },
         { key: 'title', label: 'Titulli (opsional)', type: 'select', options: titleOptions },
       ],
     },
-  ];
+  ], [regionOptions, titleOptions, downloadAttendanceReport, downloadVacationReport]);
 
-  const summaryReportDefinition = {
-    id: 'summary', 
-    title: 'Raporti Përmbledhës', 
-    description: 'Statistika agregate të performancës.',
-    icon: FiBarChart2, 
-    initialFilters: { startDate: '', endDate: '', username: '', region: '', title: '' },
-    onDownload: handleDownloadSummary,
-    fields: [
-      { key: 'startDate', label: 'Nga data', type: 'date' },
-      { key: 'endDate', label: 'Deri më datë', type: 'date' },
-      { key: 'username', label: 'Emri i Përdoruesit (opsional)', type: 'text', placeholder: 'e.g., filan.fisteku' },
-      { key: 'region', label: 'Rajoni (opsional)', type: 'select', options: regionOptions },
-      { key: 'title', label: 'Titulli (opsional)', type: 'select', options: titleOptions },
-    ],
+  const handleSelectReport = (id) => {
+    setSelectedReportId(id);
+    const report = reportDefinitions.find((r) => r.id === id);
+    if (report) {
+      const initialFilters = { ...report.initialFilters };
+      if (id === 'attendance') {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const formatDate = (date) => date.toISOString().split('T')[0];
+        initialFilters.startDate = formatDate(firstDay);
+        initialFilters.endDate = formatDate(lastDay);
+      }
+      setFilters(initialFilters);
+    }
   };
 
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleNext = () => setStep((s) => Math.min(s + 1, 3));
+  const handleBack = () => setStep((s) => Math.max(s - 1, 1));
+  
+  const handleDownload = useCallback(() => {
+    const report = reportDefinitions.find((r) => r.id === selectedReportId);
+    if (report) {
+      report.onDownload(filters);
+    }
+  }, [selectedReportId, filters, reportDefinitions]);
+  
+  const selectedReport = reportDefinitions.find((r) => r.id === selectedReportId);
+
   return (
-    <div className="min-h-full p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
-            {reportDefinitions.map(report => (<ReportCard key={report.id} report={report} onDownload={report.onDownload} isLoading={loading} />))}
-            <div className="md:col-span-2">
-              <ReportCard key={summaryReportDefinition.id} report={summaryReportDefinition} onDownload={summaryReportDefinition.onDownload} isLoading={loading} />
-            </div>
-          </div>
-          <div className="lg:col-span-1">
-            <div className="bg-gray-800/80 backdrop-blur-sm border border-cyan-500/30 rounded-2xl shadow-2xl p-6 sticky top-8">
-              <div className='flex items-center text-lg font-semibold text-white mb-4'>
-                <FiInfo className="mr-3 text-cyan-400 h-6 w-6" /><span>Udhëzime</span>
-              </div>
-              <div className="space-y-4 text-sm text-gray-300">
-                <p><strong className="font-medium text-white">1. Zgjidhni Raportin:</strong> Përdorni një nga kartat në të majtë për të zgjedhur llojin e raportit.</p>
-                <p><strong className="font-medium text-white">2. Aplikoni Filtrat:</strong> Përcaktoni intervalet e datave, emrat e përdoruesve, rajonet, ose titujt. Lënia bosh e një fushe do t'i përfshijë të gjitha të dhënat.</p>
-                <p><strong className="font-medium text-white">3. Shkarkoni:</strong> Shtypni butonin "Shkarko Raportin" për të gjeneruar dhe shkarkuar skedarin Excel.</p>
-              </div>
-            </div>
+    <div className="min-h-full p-4 sm:p-6 lg:p-8 flex items-center justify-center">
+      <div className="w-full max-w-2xl">
+        <div className="bg-gray-800/80 backdrop-blur-sm border border-cyan-500/30 rounded-2xl shadow-2xl p-6 sm:p-8">
+            <ProgressBar currentStep={step} totalSteps={3} />
+            <AnimatePresence mode="wait">
+                {step === 1 && (
+                    <Step1_SelectReport
+                        key="step1"
+                        onSelect={handleSelectReport}
+                        selectedId={selectedReportId}
+                        reportDefinitions={reportDefinitions}
+                    />
+                )}
+                {step === 2 && selectedReport && (
+                    <Step2_ConfigureFilters
+                        key="step2"
+                        report={selectedReport}
+                        filters={filters}
+                        onFilterChange={handleFilterChange}
+                    />
+                )}
+                {step === 3 && selectedReport && (
+                    <Step3_Download
+                        key="step3"
+                        report={selectedReport}
+                        onDownload={handleDownload}
+                        isLoading={loading}
+                        downloadProgress={downloadProgress}
+                    />
+                )}
+            </AnimatePresence>
+
+          {/* Navigimi */}
+          <div className="mt-8 pt-6 border-t border-gray-700 flex justify-between items-center">
+                <button
+                onClick={handleBack}
+                disabled={step === 1 || loading}
+                className={clsx(
+                    'flex items-center px-4 py-2 font-semibold rounded-lg transition-all',
+                    (step === 1 || loading) ? 'text-gray-600 cursor-not-allowed' : 'text-gray-300 hover:bg-gray-700'
+                )}
+                >
+                <FiArrowLeft className="mr-2 h-5 w-5" />
+                <span>Prapa</span>
+                </button>
+            
+            <div className="text-sm text-gray-400">Hapi {step} nga 3</div>
+
+                {step < 3 ? (
+                  <button
+                    onClick={handleNext}
+                    disabled={!selectedReportId || loading}
+                    className={clsx(
+                        'flex items-center px-4 py-2 font-bold rounded-lg transition-all',
+                        (!selectedReportId || loading) 
+                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                        : 'bg-cyan-500 text-white hover:bg-cyan-600'
+                    )}
+                  >
+                  <span>Para</span>
+                  <FiArrowRight className="ml-2 h-5 w-5" />
+                  </button>
+                ) : (
+                  <div style={{ width: '82px' }} /> // Për të mbajtur layout-in
+                )}
           </div>
         </div>
       </div>

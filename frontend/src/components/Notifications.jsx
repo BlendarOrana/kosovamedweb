@@ -54,24 +54,20 @@ const Notifications = () => {
  * Individual Form Components
  */
 const SingleUserForm = () => {
-  const { sending, sendNotification, sendNotificationByName } =
-    useNotificationStore();
-  const [sendMethod, setSendMethod] = useState("id"); // 'id' or 'name'
+  const { sending, sendNotificationByName } = useNotificationStore();
   const [recipient, setRecipient] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const notificationData = { title, body };
+    const notificationData = { 
+      title, 
+      body,
+      userName: recipient 
+    };
 
-    if (sendMethod === "id") {
-      notificationData.userId = recipient;
-      await sendNotification(notificationData);
-    } else {
-      notificationData.userName = recipient;
-      await sendNotificationByName(notificationData);
-    }
+    await sendNotificationByName(notificationData);
 
     // Clear form on success
     setRecipient("");
@@ -85,10 +81,10 @@ const SingleUserForm = () => {
         {/* Recipient Field */}
         <InputField
           id="recipient"
-          label={`Përdoruesi sipas ${sendMethod === "id" ? "ID-së" : "Emrit"}`}
+          label="Përdoruesi sipas Emrit"
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
-          placeholder={`Vendos ${sendMethod === "id" ? "ID-në" : "Emrin"} e Përdoruesit`}
+          placeholder="Vendos Emrin e Përdoruesit"
         />
         {/* Title Field */}
         <InputField
@@ -107,22 +103,6 @@ const SingleUserForm = () => {
         onChange={(e) => setBody(e.target.value)}
         placeholder="Shkruani mesazhin kryesor..."
       />
-      {/* Send Method Toggle */}
-      <div className="flex items-center space-x-4">
-        <label className="text-sm font-medium text-gray-700">Dërgo me:</label>
-        <RadioOption
-          id="send-by-id"
-          label="ID"
-          checked={sendMethod === "id"}
-          onChange={() => setSendMethod("id")}
-        />
-        <RadioOption
-          id="send-by-name"
-          label="Emër"
-          checked={sendMethod === "name"}
-          onChange={() => setSendMethod("name")}
-        />
-      </div>
 
       <SubmitButton isSending={sending} text="Dërgo Njoftimin" />
     </form>
@@ -167,7 +147,7 @@ const BatchForm = () => {
             setSelectedValue(""); // Reset selection on change
           }}
           options={[
-            { value: "role", label: "Titulli" },
+            { value: "role", label: "Roli" },
             { value: "region", label: "Regjioni" },
           ]}
         />
@@ -321,21 +301,6 @@ const SelectField = ({ id, label, options = [], ...props }) => (
         </option>
       ))}
     </select>
-  </div>
-);
-
-const RadioOption = ({ id, label, ...props }) => (
-  <div className="flex items-center">
-    <input
-      id={id}
-      type="radio"
-      name="send-method"
-      className="focus:ring-cyan-500 h-4 w-4 text-cyan-600 border-gray-300"
-      {...props}
-    />
-    <label htmlFor={id} className="ml-2 block text-sm text-gray-900">
-      {label}
-    </label>
   </div>
 );
 

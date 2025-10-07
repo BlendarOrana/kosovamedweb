@@ -17,31 +17,14 @@ const LoadingSpinner = ({ fullScreen = false, className = '' }) => {
 		return () => clearInterval(interval);
 	}, []);
 
-	// Full screen version (original behavior is preserved)
-if (fullScreen) {
-	return (
-		<div className='flex flex-col items-center justify-center min-h-screen bg-[#FCFCF9]'>
-			<video 
-				className='w-72 h-auto mb-4' 
-				src='/lejleku.webm' 
-				autoPlay
-				loop
-				muted
-				playsInline
-			/>
-			<div className='text-xl font-medium text-gray-700'>
-				Loading{dots}
-			</div>
-		</div>
-	);
-}
+
 
 	// --- FIXED: New Inline Spinner Version ---
 	// This now renders a clean, red, spinning circle.
 	return (
 		<div className={`flex items-center justify-center py-8 ${className}`}>
 			<div 
-				className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"
+className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"
 				role="status"
 				aria-label="loading"
 			>
