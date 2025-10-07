@@ -116,59 +116,7 @@ export const useReportsStore = create((set, get) => ({
     }
   },
   
-  // Download summary report
-  downloadSummaryReport: async (params = {}) => {
-    const { startDate, endDate, username, region, title } = params;
-    set({ loading: true, downloadProgress: 0 });
-    
-    try {
-      const queryParams = new URLSearchParams();
-      if (startDate) queryParams.append('startDate', startDate);
-      if (endDate) queryParams.append('endDate', endDate);
-      if (username) queryParams.append('username', username);
-      if (region) queryParams.append('region', region);
-      if (title) queryParams.append('title', title);
-      
-      const response = await axios.get(`/reports/summary-excel?${queryParams.toString()}`, {
-        responseType: 'blob',
-        onDownloadProgress: (progressEvent) => {
-          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          set({ downloadProgress: progress });
-        }
-      });
-      
-      const blob = new Blob([response.data], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-      });
-      
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      
-      const contentDisposition = response.headers['content-disposition'];
-      let filename = 'summary_report.xlsx';
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch) filename = filenameMatch[1];
-      }
-      
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      
-      toast.success('Raporti përmbledhës u shkarkua me sukses!');
-      set({ loading: false, downloadProgress: 0 });
-      return true;
-      
-    } catch (error) {
-      set({ loading: false, downloadProgress: 0 });
-      const errorMessage = error.response?.data?.message || 'Gabim në shkarkimin e raportit përmbledhës';
-      toast.error(errorMessage);
-      throw error;
-    }
-  },
+
   
   // Reset store state
   reset: () => set({ loading: false, downloadProgress: 0 })
