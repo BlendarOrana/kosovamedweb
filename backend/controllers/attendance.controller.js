@@ -6,24 +6,19 @@ import { promisePool } from "../lib/db.js";
 export const checkIn = async (req, res) => {
   const userId = req.user.id;
   try {
-    // Use database timezone for date comparison instead of local time
+    const today = new Date().toISOString().split('T')[0];
     const existingCheckIn = await promisePool.query(`
       SELECT id FROM attendance 
-      WHERE user_id = $1 
-      AND DATE(check_in_time AT TIME ZONE 'Europe/Belgrade') = CURRENT_DATE 
-      AND check_out_time IS NULL
-    `, [userId]);
-    
+      WHERE user_id = $1 AND DATE(check_in_time) = $2 AND check_out_time IS NULL
+    `, [userId, today]);
     if (existingCheckIn.rows.length > 0) {
       return res.status(400).json({ message: "Already checked in today" });
     }
-    
     const result = await promisePool.query(`
       INSERT INTO attendance (user_id, check_in_time)
       VALUES ($1, CURRENT_TIMESTAMP)
-      RETURNING id, check_in_time AT TIME ZONE 'Europe/Belgrade' as check_in_time
+      RETURNING id, check_in_time
     `, [userId]);
-    
     res.json({
       message: "Checked in successfully",
       attendance: result.rows[0]
@@ -34,24 +29,20 @@ export const checkIn = async (req, res) => {
   }
 };
 
+// Check out (No changes needed)
 export const checkOut = async (req, res) => {
   const userId = req.user.id;
   try {
+    const today = new Date().toISOString().split('T')[0];
     const result = await promisePool.query(`
       UPDATE attendance 
       SET check_out_time = CURRENT_TIMESTAMP
-      WHERE user_id = $1 
-      AND DATE(check_in_time AT TIME ZONE 'Europe/Belgrade') = CURRENT_DATE 
-      AND check_out_time IS NULL
-      RETURNING id, 
-        check_in_time AT TIME ZONE 'Europe/Belgrade' as check_in_time,
-        check_out_time AT TIME ZONE 'Europe/Belgrade' as check_out_time
-    `, [userId]);
-    
+      WHERE user_id = $1 AND DATE(check_in_time) = $2 AND check_out_time IS NULL
+      RETURNING id, check_in_time, check_out_time
+    `, [userId, today]);
     if (result.rows.length === 0) {
       return res.status(400).json({ message: "No active check-in found for today" });
     }
-    
     res.json({
       message: "Checked out successfully",
       attendance: result.rows[0]
