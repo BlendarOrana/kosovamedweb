@@ -271,7 +271,7 @@ const UserManagement = () => {
                       <label className="block text-sm font-medium text-gray-300 mb-1">Roli</label>
                       <select name="role" value={formData.role} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">
                         <option value="user">User</option>
-                        <option value="shop">Shop</option>
+                        <option value="menager">Menagjer</option>
                         <option value="admin">Admin</option>
                       </select>
                     </div>
