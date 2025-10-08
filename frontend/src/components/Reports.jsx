@@ -188,7 +188,7 @@ const Reports = () => {
         { key: 'endDate', label: 'Data e Mbarimit', type: 'date' },
         { key: 'username', label: 'Përdoruesi (opsional)', type: 'text', placeholder: 'p.sh. filan fisteku' },
         { key: 'region', label: 'Rajoni (opsional)', type: 'select', options: regionOptions },
-        { key: 'title', label: 'Titulli (opsional)', type: 'select', options: titleOptions },
+        { key: 'title', label: 'Roli (opsional)', type: 'select', options: titleOptions },
       ],
     },
     {
@@ -208,9 +208,9 @@ const Reports = () => {
             { value: 'rejected', label: 'Refuzuar' },
           ],
         },
-        { key: 'username', label: 'Përdoruesi (opsional)', type: 'text', placeholder: 'p.sh., gjon.pistolja' },
+        { key: 'username', label: 'Përdoruesi (opsional)', type: 'text', placeholder: '' },
         { key: 'region', label: 'Rajoni (opsional)', type: 'select', options: regionOptions },
-        { key: 'title', label: 'Titulli (opsional)', type: 'select', options: titleOptions },
+        { key: 'title', label: 'Roli (opsional)', type: 'select', options: titleOptions },
       ],
     },
   ], [regionOptions, titleOptions, downloadAttendanceReport, downloadVacationReport]);
