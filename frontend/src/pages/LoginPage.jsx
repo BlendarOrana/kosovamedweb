@@ -3,9 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useUserStore } from "../stores/useUserStore";
 import LoadingSpinner from "../components/LoadingSpinner";
 
-// Note: All validation and sanitization utility functions remain the same.
-// They are essential for security and have been kept from your original code.
-
 // Input sanitization utilities
 const sanitizeInput = (input) => {
   if (!input) return '';
@@ -23,7 +20,6 @@ const sanitizeInput = (input) => {
 const sanitizeName = (name) => {
   if (!name) return '';
   return sanitizeInput(name)
-    .replace(/[^a-zA-ZÀ-ÿ\s-']/g, '') // Only allow letters, spaces, hyphens, and apostrophes
     .substring(0, 50); // Reasonable name length limit
 };
 
@@ -35,11 +31,6 @@ const sanitizePassword = (password) => {
     .substring(0, 128); // Reasonable password length limit
 };
 
-// Validation utilities
-const validateName = (name) => {
-  const nameRegex = /^[a-zA-ZÀ-ÿ\s-']{2,50}$/; // Letters, spaces, hyphens, apostrophes, 2-50 chars
-  return nameRegex.test(name) && name.length >= 2 && name.length <= 50;
-};
 
 const validatePassword = (password) => {
   return password && password.length <= 128;
@@ -89,11 +80,8 @@ function LoginPage() {
 
   const handleNameChange = (e) => {
     const rawValue = e.target.value;
-    if (containsSuspiciousPatterns(rawValue)) {
-      setValidationErrors(prev => ({ ...prev, name: "Format i pavlefshëm i emrit" }));
-      return;
-    }
-    const sanitizedName = sanitizeName(rawValue);
+ 
+    const sanitizedName = (rawValue);
     setName(sanitizedName);
   };
 
@@ -109,19 +97,13 @@ function LoginPage() {
 
   const validateForm = () => {
     const errors = {};
-    if (!name) {
-      errors.name = "Emri kërkohet";
-    } else if (!validateName(name)) {
-      errors.name = "Emri duhet të përmbajë midis 2 dhe 50 karaktereve (vetëm shkronja, hapësira, viza dhe apostrofa)";
-    }
+
     if (!password) {
       errors.password = "Fjalëkalimi kërkohet";
     } else if (!validatePassword(password)) {
       errors.password = "Fjalëkalimi duhet të jetë midis 6 dhe 128 karaktereve";
     }
-    if (containsSuspiciousPatterns(name) || containsSuspiciousPatterns(password)) {
-      errors.security = "Të dhëna të pavlefshme të zbuluara";
-    }
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -139,10 +121,7 @@ function LoginPage() {
       setValidationErrors({ general: "Të dhëna të pavlefshme" });
       return;
     }
-    if (containsSuspiciousPatterns(sanitizedData.name) || containsSuspiciousPatterns(sanitizedData.password)) {
-      setValidationErrors({ security: "Të dhëna të dyshimta të zbuluara" });
-      return;
-    }
+
     await login(sanitizedData.name, sanitizedData.password);
   };
   
