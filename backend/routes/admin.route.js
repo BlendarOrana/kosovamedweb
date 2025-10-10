@@ -5,9 +5,7 @@ import {
   createUser, 
   updateUser, 
   changeUserPassword, 
-  deleteUser,
-  getUnreadDeliveriesCount, markDeliveriesAsRead
-} from '../controllers/admin.controller.js';
+  deleteUser} from '../controllers/admin.controller.js';
 import { protectRoute,adminRoute } from "../middleware/auth.middleware.js";
 
 const router = express.Router();

@@ -20,7 +20,7 @@ export const useUserStore = create((set, get) => ({
       set({ user: res.data, loading: false });
       
       // Fetch regions and titles if user is admin
-      if (res.data.role === 'admin') {
+      if (res.data.role === 'admin' || res.data.role==='manager') {
         get().fetchRegions();
         get().fetchTitles();
       }

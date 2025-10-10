@@ -44,22 +44,7 @@ export const useAdminStore = create((set, get) => ({
     }
   },
   
-  // Get a single user
-  getUserById: async (id) => {
-    set({ loading: true });
-    try {
-      const res = await axios.get(`/admin/users/${id}`);
-      set({ currentUser: res.data, loading: false, error: null });
-      return res.data;
-    } catch (error) {
-      set({ 
-        loading: false, 
-        error: error.response?.data?.message || "User not found" 
-      });
-      toast.error(error.response?.data?.message || "User not found");
-      return null;
-    }
-  },
+
   
   // Create a new user
   createUser: async (userData) => {

@@ -99,7 +99,7 @@ export const markAllNotificationsAsRead = async (req, res) => {
     const userId = req.user.id;
 
     await promisePool.query(
-      'UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false',
+      'UPDATE notifications SET is_read = true WHERE user_iduser_id = $1 AND is_read = false',
       [userId]
     );
 

@@ -44,10 +44,7 @@ function App() {
       case "manager":
         return "/admin";
 
-      case "stocker":
-        return "/stocker";
-      case "driver":
-        return "/driver";
+     
       default:
         return "/";
     }
@@ -80,7 +77,7 @@ function App() {
             path="/admin" 
             element={
               user ? 
-                (user.role === "admin" ? <AdminDashboard /> : <Navigate to={getDefaultRouteForUser()} replace />) 
+                (user.role === "admin" || user.role ==='manager' ? <AdminDashboard /> : <Navigate to={getDefaultRouteForUser()} replace />) 
                 : <Navigate to="/" replace />
             } 
           />
