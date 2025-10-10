@@ -3,7 +3,22 @@ import { promisePool } from "../lib/db.js";
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 dotenv.config();
-import { getFileUrl } from '../lib/s3.js'; // **Step 1: Import your s3 helper**
+import { uploadToS3, getCloudFrontUrl } from '../lib/s3.js'; // **Step 1: Import your s3 helper**
+import multer from 'multer';
+
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 
 const ACCESS_TOKEN_EXPIRY_SECONDS = 24 * 60 * 60; // 24 hours in seconds
@@ -31,36 +46,68 @@ const setCookie = (res, accessToken) => {
   res.cookie("accessToken", accessToken, cookieOptions);
 };
 
-export const signup = async (req, res) => {
-  const { name, password } = req.body;
 
-  try {
-    const result = await promisePool.query('SELECT * FROM users WHERE name = $1', [name]);
-    if (result.rows.length > 0) {
-      return res.status(400).json({ message: "User already exists" });
+
+export const signup = async (req, res) => {
+  // Use multer to handle profile image upload
+  upload.single('profile_image')(req, res, async (err) => {
+    if (err) {
+      console.error("Multer upload error:", err);
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ message: 'File upload error', error: err.message });
+      }
+      return res.status(400).json({ message: err.message });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const { name, password, email, number } = req.body;
 
-    const insertResult = await promisePool.query(
-      `INSERT INTO users (name, password, role, active)
-       VALUES ($1, $2, 'user', true) RETURNING id`,
-      [name, hashedPassword]
-    );
+    try {
+      // Check if user already exists
+      const result = await promisePool.query('SELECT * FROM users WHERE name = $1', [name]);
+      if (result.rows.length > 0) {
+        return res.status(400).json({ message: "User already exists" });
+      }
 
-    const newUserId = insertResult.rows[0].id;
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      let profileImageKey = null;
+      
+      // Handle profile image upload if file exists
+      if (req.file) {
+        const key = `profiles/${Date.now()}-${req.file.originalname}`;
+        
+        const uploadResult = await uploadToS3(
+          req.file.buffer,
+          key,
+          req.file.originalname,
+          req.file.mimetype,
+          true // Process as image
+        );
+        
+        profileImageKey = uploadResult.Key;
+      }
 
-    res.status(201).json({
-      _id: newUserId,
-      name,
-      role: 'user',
-      active: true
-    });
+      // Insert the new user with status set to false
+      const insertResult = await promisePool.query(
+        `INSERT INTO users (name, password, email, number, profile_image_url, role, status)
+         VALUES ($1, $2, $3, $4, $5, 'user', false) 
+         RETURNING id, name, email, number, profile_image_url, role, status`,
+        [name, hashedPassword, email, number, profileImageKey]
+      );
 
-  } catch (error) {
-    console.log("Error in signup controller", error.message);
-    res.status(500).json({ message: error.message });
-  }
+      const newUser = insertResult.rows[0];
+      
+      // Process CloudFront URL for profile image in response
+      newUser.profile_image_url = newUser.profile_image_url ? getCloudFrontUrl(newUser.profile_image_url) : null;
+
+      res.status(201).json(newUser);
+
+    } catch (error) {
+      console.log("Error in signup controller", error.message);
+      res.status(500).json({ message: error.message });
+    }
+  });
 };
 
 // Web login
@@ -90,7 +137,7 @@ export const login = async (req, res) => {
         name: user.name,
         number: user.number,
         role: user.role,
-        active: user.active
+        active: user.active,
       });
     } else {
       res.status(400).json({ message: "Invalid name or password" });
@@ -136,20 +183,31 @@ export const mobileLogin = async (req, res) => {
         }
       }
 
-      // **Step 2: Check for contract_url and generate the accessible URL**
-      let contractUrl = null;
-      if (user.contract_url) {
-        try {
-            const fileUrlResult = await getFileUrl(user.contract_url);
-            if (fileUrlResult) {
-                contractUrl = fileUrlResult.url;
-            }
-        } catch (error) {
-            console.error("Error generating file URL for contract:", error.message);
-            // Decide if you want to fail the login or just return null for the URL
-        }
-      }
+let contractUrl = null;
+if (user.contract_url) {
+  try {
+    const fileUrlResult = getCloudFrontUrl(user.contract_url); // no await
+    if (fileUrlResult) {
+      contractUrl = fileUrlResult; // use directly
+    }
+  } catch (error) {
+    console.error("Error generating file URL for contract:", error.message);
+  }
+}
 
+
+let imageUrl = null;
+if(user.profile_image_url){
+  try{
+    const imageurl = getCloudFrontUrl(user.profile_image_url);
+    if(imageurl){
+    imageUrl=imageurl;
+  
+  }
+    } catch (error) {
+    console.error("Error generating file URL for contract:", error.message);
+  }
+}
       // Generate token with longer expiry for mobile
       const accessToken = generateAccessToken(user.id, true);
 
@@ -164,7 +222,9 @@ export const mobileLogin = async (req, res) => {
           number: user.number,
           role: user.role,
           active: user.active,
-          contract_url: contractUrl // Add the new field here
+          region:user.region,
+          contract_url: contractUrl, // Add the new field here
+          profile_image_url:imageUrl
         }
       });
     } else {

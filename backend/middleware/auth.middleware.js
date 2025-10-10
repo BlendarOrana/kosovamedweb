@@ -22,7 +22,7 @@ export const protectRoute = async (req, res, next) => {
     
     // Ensure all fields needed by req.user are selected
     const result = await promisePool.query(
-      'SELECT id, name, role, active FROM users WHERE id = $1',
+      'SELECT id, name, role, active,region  FROM users WHERE id = $1',
       [decoded.userId]
     );
     
@@ -60,9 +60,23 @@ export const protectRoute = async (req, res, next) => {
 };
 
 export const adminRoute = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
+  if (req.user && (req.user.role === "admin" || req.user.role === "manager")) {
     next();
   } else {
-    return res.status(403).json({ message: "Access denied - Admin only" });
+    return res.status(403).json({ message: "Access denied - Admin or Manager only" });
   }
 };
+
+
+export const managerRoute = (req, res, next) => {
+  if (req.user &&  req.user.role === "manager") {
+    next();
+  } else {
+    return res.status(403).json({ message: "Access denied - Admin or Manager only" });
+  }
+};
+
+
+
+
+

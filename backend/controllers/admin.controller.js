@@ -22,16 +22,41 @@ const upload = multer({
 // Get all users
 export const getAllUsers = async (req, res) => {
   try {
-    const result = await promisePool.query(`
-      SELECT id, name, number, role, active, region, title, contract_url, email
-      FROM users
-      ORDER BY id DESC
-    `);
+    // Debug logs
+    console.log('=== getAllUsers Debug ===');
+    console.log('req.user:', req.user);
+    console.log('req.user.role:', req.user?.role);
+    console.log('req.user.region:', req.user?.region);
     
-    // Process CloudFront URLs for contract_url
+    let query = `
+      SELECT id, name, number, role, active, region, title, contract_url, email, profile_image_url, status
+      FROM users
+    `;
+    
+    const queryParams = [];
+    
+    // If user is a manager, filter by their region
+    if (req.user.role === 'manager') {
+      query += ` WHERE region = $1`;
+      queryParams.push(req.user.region);
+      console.log('Manager filter applied. Region:', req.user.region);
+    } else {
+      console.log('No manager filter - showing all users');
+    }
+    
+    console.log('Final query:', query);
+    console.log('Query params:', queryParams);
+    
+    const result = await promisePool.query(query, queryParams);
+    
+    console.log('Query result count:', result.rows.length);
+    console.log('Sample user regions:', result.rows.slice(0, 3).map(u => u.region));
+    
+    // Process CloudFront URLs for contract_url and profile_image_url
     const users = result.rows.map(user => ({
       ...user,
-      contract_url: user.contract_url ? getCloudFrontUrl(user.contract_url) : null
+      contract_url: user.contract_url ? getCloudFrontUrl(user.contract_url) : null,
+      profile_image_url: user.profile_image_url ? getCloudFrontUrl(user.profile_image_url) : null
     }));
     
     res.json(users);
@@ -136,8 +161,11 @@ export const createUser = async (req, res) => {
 
 // Update a user
 export const updateUser = async (req, res) => {
-  // Use multer to handle file upload first
-  upload.single('contract')(req, res, async (err) => {
+  // Use multer to handle multiple file uploads
+  upload.fields([
+    { name: 'contract', maxCount: 1 },
+    { name: 'license', maxCount: 1 }
+  ])(req, res, async (err) => {
     if (err) {
       console.error("Multer upload error:", err);
       if (err instanceof multer.MulterError) {
@@ -158,9 +186,9 @@ export const updateUser = async (req, res) => {
     } = req.body;
     
     try {
-      // Get current user data to check for existing contract
+      // Get current user data to check for existing contract and license
       const currentUser = await promisePool.query(
-        'SELECT contract_url FROM users WHERE id = $1',
+        'SELECT contract_url, license_url FROM users WHERE id = $1',
         [id]
       );
       
@@ -169,17 +197,20 @@ export const updateUser = async (req, res) => {
       }
       
       const oldContractKey = currentUser.rows[0].contract_url;
+      const oldLicenseKey = currentUser.rows[0].license_url;
       let contractKey = oldContractKey;
+      let licenseKey = oldLicenseKey;
       
       // Handle contract PDF upload if new file exists
-      if (req.file) {
-        const key = `contracts/${Date.now()}-${req.file.originalname}`;
+      if (req.files && req.files.contract && req.files.contract[0]) {
+        const contractFile = req.files.contract[0];
+        const key = `contracts/${Date.now()}-${contractFile.originalname}`;
         
         const uploadResult = await uploadToS3(
-          req.file.buffer,
+          contractFile.buffer,
           key,
-          req.file.originalname,
-          req.file.mimetype,
+          contractFile.originalname,
+          contractFile.mimetype,
           false // Don't process PDFs as images
         );
         
@@ -191,21 +222,43 @@ export const updateUser = async (req, res) => {
         }
       }
       
+      // Handle license PDF upload if new file exists
+      if (req.files && req.files.license && req.files.license[0]) {
+        const licenseFile = req.files.license[0];
+        const key = `licenses/${Date.now()}-${licenseFile.originalname}`;
+        
+        const uploadResult = await uploadToS3(
+          licenseFile.buffer,
+          key,
+          licenseFile.originalname,
+          licenseFile.mimetype,
+          false // Don't process PDFs as images
+        );
+        
+        licenseKey = uploadResult.Key;
+        
+        // Delete old license from S3 if it exists and is different
+        if (oldLicenseKey && oldLicenseKey !== licenseKey) {
+          await deleteFromS3(oldLicenseKey);
+        }
+      }
+      
       // Update the user
       const result = await promisePool.query(`
         UPDATE users
-        SET name = $1, number = $2, role = $3, active = $4, region = $5, title = $6, contract_url = $7, email = $8
-        WHERE id = $9
-        RETURNING id, name, number, role, active, region, title, contract_url, email
-      `, [name, number, role, active, region, title, contractKey, email, id]);
+        SET name = $1, number = $2, role = $3, active = $4, region = $5, title = $6, contract_url = $7, email = $8, license_url = $9
+        WHERE id = $10
+        RETURNING id, name, number, role, active, region, title, contract_url, email, license_url
+      `, [name, number, role, active, region, title, contractKey, email, licenseKey, id]);
       
       if (result.rows.length === 0) {
         return res.status(404).json({ message: 'User not found' });
       }
       
       const updatedUser = result.rows[0];
-      // Process CloudFront URL for response
+      // Process CloudFront URLs for response
       updatedUser.contract_url = updatedUser.contract_url ? getCloudFrontUrl(updatedUser.contract_url) : null;
+      updatedUser.license_url = updatedUser.license_url ? getCloudFrontUrl(updatedUser.license_url) : null;
       
       res.json(updatedUser);
     } catch (error) {
@@ -274,67 +327,7 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// Keep the delivery-related functions unchanged
-export const getUnreadDeliveriesCount = async (req, res) => {
-  try {
-    const countQuery = `
-      SELECT COUNT(*) as count
-      FROM deliveries 
-      WHERE read_by_admin = false
-    `;
 
-    const result = await promisePool.query(countQuery);
-    const count = parseInt(result.rows[0].count);
-
-    return res.json({
-      success: true,
-      count: count
-    });
-
-  } catch (error) {
-    console.error("Error fetching unread deliveries count:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-export const markDeliveriesAsRead = async (req, res) => {
-  try {
-    const { deliveryIds } = req.body; 
-
-    let query;
-    let values;
-
-    if (deliveryIds && deliveryIds.length > 0) {
-      const placeholders = deliveryIds.map((_, index) => `$${index + 1}`).join(',');
-      query = `
-        UPDATE deliveries 
-        SET read_by_admin = true 
-        WHERE id IN (${placeholders}) AND read_by_admin = false
-      `;
-      values = deliveryIds;
-    } else {
-      query = `
-        UPDATE deliveries 
-        SET read_by_admin = true 
-        WHERE read_by_admin = false
-      `;
-      values = [];
-    }
-
-    const result = await promisePool.query(query, values);
-    const updatedCount = result.rowCount;
-
-    return res.json({
-      success: true,
-      message: `${updatedCount} deliveries marked as read`,
-      updatedCount: updatedCount
-    });
-
-  } catch (error) {
-    console.error("Error marking deliveries as read:", error);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
 
 // backend/controllers/auth.controller.js
 // Add this function to your existing auth.controller.js

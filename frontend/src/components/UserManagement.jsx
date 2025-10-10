@@ -6,27 +6,27 @@ import { FiUser, FiEdit2, FiTrash2, FiKey, FiPlus, FiX, FiCheck, FiSearch, FiExt
 // import LoadingSpinner from "../components/LoadingSpinner";
 
 const UserManagement = () => {
-  const { 
-    users, 
-    loading, 
+  const {
+    users,
+    loading,
     getAllUsers,
-    refreshUsers, 
-    createUser, 
-    updateUser, 
-    changeUserPassword, 
-    deleteUser, 
+    refreshUsers,
+    createUser,
+    updateUser,
+    changeUserPassword,
+    deleteUser,
   } = useAdminStore();
 
   const initialFormData = {
     name: "", password: "", confirmPassword: "", number: "", role: "user", active: true,
-    region: "", title: "", email: "", contract: null,
+    region: "", title: "", email: "", contract: null, license: null,
   };
-  
+
   const [formData, setFormData] = useState(initialFormData);
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-  
+
   const [currentUserForEdit, setCurrentUserForEdit] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(null);
@@ -38,11 +38,11 @@ const UserManagement = () => {
     }
   }, [getAllUsers, users.length]);
 
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  
+
 
   const resetFormAndCloseModals = () => {
     setFormData(initialFormData);
@@ -53,7 +53,7 @@ const UserManagement = () => {
     setPasswordModalOpen(false);
     setNewPassword("");
   };
-  
+
   const handleAddUser = () => {
     setIsEditing(false);
     setFormData(initialFormData);
@@ -61,7 +61,7 @@ const UserManagement = () => {
   };
 
   const handleEditUser = (id) => {
-    const userData = users.find(u => u.id === id); 
+    const userData = users.find(u => u.id === id);
     if (userData) {
       setFormData({
         name: userData.name || "",
@@ -74,6 +74,7 @@ const UserManagement = () => {
         password: "",
         confirmPassword: "",
         contract: null,
+        license: null,
       });
       setCurrentUserForEdit(userData);
       setSelectedUserId(id);
@@ -92,9 +93,9 @@ const UserManagement = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked, files } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'file' ? files[0] : (type === 'checkbox' ? checked : value) 
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'file' ? files[0] : (type === 'checkbox' ? checked : value)
     }));
   };
 
@@ -104,16 +105,16 @@ const UserManagement = () => {
       alert("Fjalëkalimet nuk përputhen");
       return;
     }
-    
+
     const dataToSend = new FormData();
     Object.keys(formData).forEach(key => {
         if (key !== 'confirmPassword' && formData[key] !== null) {
             dataToSend.append(key, formData[key]);
         }
     });
-    
-    const success = isEditing 
-        ? await updateUser(selectedUserId, dataToSend) 
+
+    const success = isEditing
+        ? await updateUser(selectedUserId, dataToSend)
         : await createUser(dataToSend);
 
     if (success) {
@@ -127,7 +128,7 @@ const UserManagement = () => {
       alert("Fjalëkalimi duhet të ketë të paktën 6 karaktere");
       return;
     }
-    
+
     const success = await changeUserPassword(selectedUserId, newPassword);
     if(success) {
         resetFormAndCloseModals();
@@ -152,8 +153,8 @@ const UserManagement = () => {
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
         <div className="relative flex-1 w-full">
           <input
-            type="text" 
-            placeholder="Kërko përdorues..." 
+            type="text"
+            placeholder="Kërko përdorues..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-white placeholder-gray-400"
@@ -176,7 +177,7 @@ const UserManagement = () => {
           </button>
         </div>
       </div>
-      
+
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
@@ -196,7 +197,11 @@ const UserManagement = () => {
               filteredUsers.map((user) => (
                 <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/40">
                   <td className="py-3 px-4 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-cyan-500/20 text-cyan-400 rounded-full flex items-center justify-center"><FiUser /></div>
+                    {user.profile_image_url ? (
+                      <img src={user.profile_image_url} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 bg-cyan-500/20 text-cyan-400 rounded-full flex items-center justify-center"><FiUser /></div>
+                    )}
                     <span className="text-white font-medium">{user.name}</span>
                   </td>
                   <td className="py-3 px-4">
@@ -271,11 +276,11 @@ const UserManagement = () => {
                       <label className="block text-sm font-medium text-gray-300 mb-1">Roli</label>
                       <select name="role" value={formData.role} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">
                         <option value="user">User</option>
-                        <option value="menager">Menagjer</option>
+                        <option value="Manager">Menagjer</option>
                         <option value="admin">Admin</option>
                       </select>
                     </div>
-                    
+
                     {isEditing && currentUserForEdit?.contract_url && (
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-300 mb-1">Kontrata Aktuale</label>
@@ -290,6 +295,22 @@ const UserManagement = () => {
                       <label className="block text-sm font-medium text-gray-300 mb-1">{isEditing ? "Ngarko Kontratë të Re (Opsionale)" : "Ngarko Kontratën (Opsionale)"}</label>
                       <input id="contract" name="contract" type="file" accept=".pdf" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
                     </div>
+
+                    {isEditing && currentUserForEdit?.license_url && (
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-300 mb-1">Licensa Aktuale</label>
+                            <a href={currentUserForEdit.license_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 hover:underline">
+                                <FiExternalLink />
+                                <span>Shiko Licensën</span>
+                            </a>
+                        </div>
+                    )}
+
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-300 mb-1">{isEditing ? "Ngarko Licensë të Re (Opsionale)" : "Ngarko Licensën (Opsionale)"}</label>
+                        <input id="license" name="license" type="file" accept=".pdf" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
+                    </div>
+
 
                     <div className="flex items-center pt-2 md:col-span-2">
                       <input id="active" name="active" type="checkbox" checked={formData.active} onChange={handleChange} className="w-4 h-4 text-cyan-500 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500"/>
