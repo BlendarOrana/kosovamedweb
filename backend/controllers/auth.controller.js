@@ -153,15 +153,15 @@ export const mobileLogin = async (req, res) => {
   const { name, password, pushToken, deviceType } = req.body;
 
   try {
-    const result = await promisePool.query('SELECT * FROM users WHERE name = $1', [name]);
+    // Check both active and status in the query
+    const result = await promisePool.query(
+      'SELECT * FROM users WHERE name = $1 AND active = true AND status = true', 
+      [name]
+    );
     const user = result.rows[0];
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid name or password" });
-    }
-
-    if (!user.active) {
-      return res.status(403).json({ message: "Account is inactive. Please contact support." });
+      return res.status(400).json({ message: "Invalid credentials or account not approved" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -169,9 +169,8 @@ export const mobileLogin = async (req, res) => {
     if (isMatch) {
       // Update push token if provided
       if (pushToken) {
-        // Import the Expo SDK to validate token
         const { Expo } = await import('expo-server-sdk');
-        const expo = new new Expo();
+        const expo = new Expo();
 
         if (expo.isExpoPushToken(pushToken)) {
           await promisePool.query(
@@ -183,35 +182,32 @@ export const mobileLogin = async (req, res) => {
         }
       }
 
-let contractUrl = null;
-if (user.contract_url) {
-  try {
-    const fileUrlResult = getCloudFrontUrl(user.contract_url); // no await
-    if (fileUrlResult) {
-      contractUrl = fileUrlResult; // use directly
-    }
-  } catch (error) {
-    console.error("Error generating file URL for contract:", error.message);
-  }
-}
+      let contractUrl = null;
+      if (user.contract_url) {
+        try {
+          const fileUrlResult = getCloudFrontUrl(user.contract_url);
+          if (fileUrlResult) {
+            contractUrl = fileUrlResult;
+          }
+        } catch (error) {
+          console.error("Error generating file URL for contract:", error.message);
+        }
+      }
 
+      let imageUrl = null;
+      if (user.profile_image_url) {
+        try {
+          const imageurl = getCloudFrontUrl(user.profile_image_url);
+          if (imageurl) {
+            imageUrl = imageurl;
+          }
+        } catch (error) {
+          console.error("Error generating file URL for profile image:", error.message);
+        }
+      }
 
-let imageUrl = null;
-if(user.profile_image_url){
-  try{
-    const imageurl = getCloudFrontUrl(user.profile_image_url);
-    if(imageurl){
-    imageUrl=imageurl;
-  
-  }
-    } catch (error) {
-    console.error("Error generating file URL for contract:", error.message);
-  }
-}
-      // Generate token with longer expiry for mobile
       const accessToken = generateAccessToken(user.id, true);
 
-      // **Step 3: Add the contract_url to the user object in the response**
       res.json({
         message: "Login successful",
         token: accessToken,
@@ -222,9 +218,9 @@ if(user.profile_image_url){
           number: user.number,
           role: user.role,
           active: user.active,
-          region:user.region,
-          contract_url: contractUrl, // Add the new field here
-          profile_image_url:imageUrl
+          region: user.region,
+          contract_url: contractUrl,
+          profile_image_url: imageUrl
         }
       });
     } else {

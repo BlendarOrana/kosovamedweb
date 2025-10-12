@@ -212,15 +212,19 @@ export const respondToReplacement = async (req, res) => {
 export const getManagerVacations = async (req, res) => {
   try {
     const result = await promisePool.query(`
-      SELECT 
-        v.*,
-        requester.name as requester_name,
-        replacement.name as replacement_name
-      FROM vacations v
-      JOIN users requester ON v.user_id = requester.id
-      LEFT JOIN users replacement ON v.replacement_user_id = replacement.id
-      WHERE v.status = 'pending_manager_approval'
-      ORDER BY v.requested_at DESC
+ SELECT 
+  v.*,
+  u1.name as employee_name,
+  u1.title as employee_title,
+  u1.region as employee_region,
+  u2.name as replacement_name,
+  u2.title as replacement_title,
+  u2.region as replacement_region
+FROM vacations v
+LEFT JOIN users u1 ON v.user_id = u1.id
+LEFT JOIN users u2 ON v.replacement_user_id = u2.id
+WHERE v.status = 'pending_manager_approval'
+ORDER BY v.requested_at DESC;
     `);
     
     res.json(result.rows);
