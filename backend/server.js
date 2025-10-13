@@ -35,59 +35,57 @@ app.set('trust proxy', 1);
 // 1. Security Headers with Helmet
 app.use(helmet({
   hsts: {
-    maxAge: 31536000, 
-    includeSubDomains: true, 
-    preload: true, 
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
   },
-
-  frameguard: {
-    action: "deny",
-  },
-
-  // X-Content-Type-Options to prevent MIME sniffing
+  frameguard: { action: "deny" },
   noSniff: true,
-
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", process.env.NODE_ENV === "production" ? undefined : "'unsafe-eval'"].filter(Boolean),
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        process.env.NODE_ENV === "production" ? undefined : "'unsafe-eval'"
+      ].filter(Boolean),
       imgSrc: [
-        "'self'", 
-        "data:", 
+        "'self'",
+        "data:",
         "blob:",
-     
+        "https://d2hjyrsp0ml1qs.cloudfront.net",
+        "https://kosovamed.s3.eu-north-1.amazonaws.com"
       ],
- mediaSrc: [
-  "'self'",
-  "https://d2hjyrsp0ml1qs.cloudfront.net",
-  "https://kosovamed.s3.eu-north-1.amazonaws.com"
-],
-objectSrc: [
-  "'self'",
-  "https://d2hjyrsp0ml1qs.cloudfront.net",
-  "https://kosovamed.s3.eu-north-1.amazonaws.com"
-],
-frameSrc: [
-  "'self'",
-  "https://d2hjyrsp0ml1qs.cloudfront.net"
-],
-connectSrc: [
-  "'self'",
-  "https://d2hjyrsp0ml1qs.cloudfront.net",
-  "https://kosovamed.s3.eu-north-1.amazonaws.com"
-],
-fontSrc: ["'self'", "data:", "https:"],
-
+      mediaSrc: [
+        "'self'",
+        "https://d2hjyrsp0ml1qs.cloudfront.net",
+        "https://kosovamed.s3.eu-north-1.amazonaws.com"
+      ],
+      objectSrc: [
+        "'self'",
+        "https://d2hjyrsp0ml1qs.cloudfront.net",
+        "https://kosovamed.s3.eu-north-1.amazonaws.com"
+      ],
+      frameSrc: [
+        "'self'",
+        "https://d2hjyrsp0ml1qs.cloudfront.net"
+      ],
+      connectSrc: [
+        "'self'",
+        "https://d2hjyrsp0ml1qs.cloudfront.net",
+        "https://kosovamed.s3.eu-north-1.amazonaws.com"
+      ],
       fontSrc: ["'self'", "data:", "https:"],
       manifestSrc: ["'self'"],
       workerSrc: ["'self'", "blob:"],
       childSrc: ["'self'", "blob:"]
     },
   },
-  crossOriginEmbedderPolicy: false, // Disable COEP to allow cross-origin resources
-  crossOriginResourcePolicy: { policy: "cross-origin" } // Allow cross-origin resources
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
+
 
 // 2. Rate Limiting
 const apiLimiter = rateLimit({

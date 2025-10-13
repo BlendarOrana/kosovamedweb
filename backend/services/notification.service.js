@@ -232,7 +232,7 @@ export const NotificationService = {
     }
   },
 
-  async sendToAllUsers(title, body, data = {}, batchSize = 50, delayMs = 1000) {
+  async sendToAllUsers(title, body, data = {}, batchSize = 100, delayMs = 500) {
     return await this.sendBatchNotifications({}, title, body, data, batchSize, delayMs);
   },
 
