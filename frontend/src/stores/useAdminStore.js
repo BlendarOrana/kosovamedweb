@@ -90,23 +90,22 @@ export const useAdminStore = create((set, get) => ({
   },
   
   // Accept a pending user
-acceptUser: async (userId, region) => {
-  set({ loading: true });
+acceptUser: async (userId, region, contractStartDate) => {
   try {
-    await axios.put(`/admin/users/${userId}/accept`, { region }); // Send region in body
-    set(state => ({
-      pendingUsers: state.pendingUsers.filter(user => user.id !== userId),
-      loading: false,
-      error: null
-    }));
-    toast.success("Përdoruesi u pranua me sukses");
-    return true;
+    const res = await axios.put(
+      `/admin/users/${userId}/accept`,
+      { region, contractStartDate }
+    );
+    
+    if (res.status === 200) {
+      set((state) => ({
+        pendingUsers: state.pendingUsers.filter((user) => user.id !== userId),
+      }));
+      toast.success("Përdoruesi u pranua me sukses");
+      return true;
+    }
   } catch (error) {
-    set({ 
-      loading: false, 
-      error: error.response?.data?.message || "Failed to accept user" 
-    });
-    toast.error(error.response?.data?.message || "Dështoi pranimi i përdoruesit");
+    toast.error(error.response?.data?.message || "Gabim gjatë pranimit të përdoruesit");
     return false;
   }
 },
