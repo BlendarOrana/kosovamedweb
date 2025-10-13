@@ -227,12 +227,11 @@ export const sendBatchNotifications = async (req, res) => {
   }
 };
 
-/**
- * Send notification to all active users
- */
+
 export const sendNotificationToAll = async (req, res) => {
   try {
-    const { title, body, data, batchSize = 50, delayMs = 1000 } = req.body;
+
+    const { title, body, data, batchSize, delayMs } = req.body;
 
     if (!title || !body) {
       return res.status(400).json({ error: 'title and body are required' });
