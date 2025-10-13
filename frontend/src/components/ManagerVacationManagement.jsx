@@ -77,7 +77,7 @@ const ManagerVacationManagement = () => {
         Icon: FiClock 
       },
       pending_admin_approval: { 
-        text: 'Dërguar te Admini', 
+        text: 'Ne pritje te aprovimit nga Hr', 
         color: 'bg-blue-500/20 text-blue-400', 
         Icon: FiAlertCircle 
       },

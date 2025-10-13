@@ -210,30 +210,42 @@ export const respondToReplacement = async (req, res) => {
 
 // Manager: Get pending vacation requests
 export const getManagerVacations = async (req, res) => {
+  const { status } = req.query;
   try {
-    const result = await promisePool.query(`
- SELECT 
-  v.*,
-  u1.name as employee_name,
-  u1.title as employee_title,
-  u1.region as employee_region,
-  u2.name as replacement_name,
-  u2.title as replacement_title,
-  u2.region as replacement_region
-FROM vacations v
-LEFT JOIN users u1 ON v.user_id = u1.id
-LEFT JOIN users u2 ON v.replacement_user_id = u2.id
-WHERE v.status = 'pending_manager_approval'
-ORDER BY v.requested_at DESC;
-    `);
+    let query = `
+      SELECT 
+        v.*,
+        u1.name as employee_name,
+        u1.title as employee_title,
+        u1.region as employee_region,
+        u2.name as replacement_name,
+        u2.title as replacement_title,
+        u2.region as replacement_region
+      FROM vacations v
+      LEFT JOIN users u1 ON v.user_id = u1.id
+      LEFT JOIN users u2 ON v.replacement_user_id = u2.id
+      WHERE 1=1
+    `;
     
+    const params = [];
+    
+    if (status) {
+      params.push(status);
+      query += ` AND v.status = $${params.length}`;
+    } else {
+      // Show all vacations that the manager has dealt with or needs to deal with
+      query += ` AND (v.status = 'pending_manager_approval' OR v.status = 'pending_admin_approval' OR v.status = 'manager_rejected' OR v.status = 'approved')`;
+    }
+    
+    query += ` ORDER BY v.requested_at DESC`;
+    
+    const result = await promisePool.query(query, params);
     res.json(result.rows);
   } catch (error) {
     console.error("Error fetching manager vacations:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
-
 // Manager responds
 export const managerRespondToVacation = async (req, res) => {
   const { id } = req.params;
@@ -278,8 +290,12 @@ export const getAllVacations = async (req, res) => {
     let query = `
       SELECT 
         v.*,
-        requester.name as requester_name,
+        requester.name as employee_name,
+        requester.title as employee_title,
+        requester.region as employee_region,
         replacement.name as replacement_name,
+        replacement.title as replacement_title,
+        replacement.region as replacement_region,
         manager.name as manager_name,
         admin.name as admin_name
       FROM vacations v
@@ -302,7 +318,6 @@ export const getAllVacations = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 // Admin responds (final approval)
 export const respondToVacation = async (req, res) => {
   const { id } = req.params;

@@ -167,7 +167,7 @@ const VacationManagement = () => {
               {filteredVacations.map((req) => (
                 <tr key={req.id} className="hover:bg-gray-700/40 transition-colors duration-200">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                    {req.user_name}
+                    {req.employee_name }
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                     {new Date(req.start_date).toLocaleDateString()} - {new Date(req.end_date).toLocaleDateString()}
