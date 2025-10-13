@@ -2,9 +2,6 @@ import { useState, useEffect } from "react";
 import { useAdminStore } from "../stores/useAdminStore"; // Assuming your store is here
 import { FiUser, FiEdit2, FiTrash2, FiKey, FiPlus, FiX, FiCheck, FiSearch, FiExternalLink, FiRefreshCw } from "react-icons/fi";
 
-// The LoadingSpinner import can be removed if not used for the main table loading state.
-// import LoadingSpinner from "../components/LoadingSpinner";
-
 const UserManagement = () => {
   const {
     users,
@@ -14,12 +11,25 @@ const UserManagement = () => {
     createUser,
     updateUser,
     changeUserPassword,
-    deleteUser,
   } = useAdminStore();
 
   const initialFormData = {
-    name: "", password: "", confirmPassword: "", number: "", role: "user", active: true,
-    region: "", title: "", email: "", contract: null, license: null,
+    name: "",
+    password: "",
+    confirmPassword: "",
+    number: "",
+    role: "user",
+    active: true,
+    region: "",
+    title: "",
+    email: "",
+    contract: null,
+    license: null,
+    // New fields added
+    id_card_number: "",
+    address: "",
+    contract_start_date: "",
+    contract_end_date: "",
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -41,8 +51,6 @@ const UserManagement = () => {
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-
 
   const resetFormAndCloseModals = () => {
     setFormData(initialFormData);
@@ -75,6 +83,11 @@ const UserManagement = () => {
         confirmPassword: "",
         contract: null,
         license: null,
+        // Populate new fields
+        id_card_number: userData.id_card_number || "",
+        address: userData.address || "",
+        contract_start_date: userData.contract_start_date ? new Date(userData.contract_start_date).toISOString().split('T')[0] : "",
+        contract_end_date: userData.contract_end_date ? new Date(userData.contract_end_date).toISOString().split('T')[0] : "",
       });
       setCurrentUserForEdit(userData);
       setSelectedUserId(id);
@@ -108,8 +121,13 @@ const UserManagement = () => {
 
     const dataToSend = new FormData();
     Object.keys(formData).forEach(key => {
+        // Exclude confirmPassword and only append non-null values
         if (key !== 'confirmPassword' && formData[key] !== null) {
-            dataToSend.append(key, formData[key]);
+          // For date fields, if they are empty, don't send them
+          if ((key === 'contract_start_date' || key === 'contract_end_date') && formData[key] === '') {
+            return;
+          }
+          dataToSend.append(key, formData[key]);
         }
     });
 
@@ -135,11 +153,7 @@ const UserManagement = () => {
     }
   };
 
-  const handleDeleteUser = async (id) => {
-    if (window.confirm("Jeni i sigurt që dëshironi të fshini këtë përdorues?")) {
-      await deleteUser(id);
-    }
-  };
+
 
   const getRoleDisplayName = (role) => (role.charAt(0).toUpperCase() + role.slice(1));
 
@@ -225,18 +239,20 @@ const UserManagement = () => {
 
       {/* --- ADD/EDIT MODAL --- */}
       {modalOpen && (
-<div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-          <div className="bg-gray-800 rounded-lg max-w-3xl w-full border border-cyan-500/30 shadow-xl flex flex-col max-h-[90vh] top-[230px]">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div className="bg-gray-800 rounded-lg max-w-3xl w-full border border-cyan-500/30 shadow-xl flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-6 border-b border-gray-700">
               <h2 className="text-xl font-bold text-white">{isEditing ? "Modifiko Përdoruesin" : "Shto Përdorues të Ri"}</h2>
               <button onClick={resetFormAndCloseModals} className="text-gray-400 hover:text-white"><FiX size={24} /></button>
             </div>
 
-            {/* Scrollable content area */}
             <div className="p-6 overflow-y-auto">
               <form id="user-form" onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2"><h3 className="text-lg font-semibold text-cyan-400">Informacioni Personal</h3></div>
+                
+                {/* Personal Information Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-cyan-400 mb-4 border-b border-gray-700 pb-2">Informacioni Personal</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-1">Emri*</label>
                       <input type="text" name="name" value={formData.name} onChange={handleChange} required className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
@@ -253,8 +269,21 @@ const UserManagement = () => {
                       <label className="block text-sm font-medium text-gray-300 mb-1">Titulli</label>
                       <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Numri i Letërnjoftimit</label>
+                      <input type="text" name="id_card_number" value={formData.id_card_number} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Adresa</label>
+                      <input type="text" name="address" value={formData.address} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
+                    </div>
+                  </div>
+                </div>
 
-                    <div className="md:col-span-2 mt-4"><h3 className="text-lg font-semibold text-cyan-400">Cilësimet e Llogarisë</h3></div>
+                {/* Account Settings Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-cyan-400 my-4 border-b border-gray-700 pb-2">Cilësimet e Llogarisë</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {!isEditing && (
                       <>
                         <div>
@@ -287,11 +316,29 @@ const UserManagement = () => {
                       <label className="block text-sm font-medium text-gray-300 mb-1">Roli</label>
                       <select name="role" value={formData.role} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">
                         <option value="user">User</option>
-                        <option value="Manager">Menagjer</option>
+                        <option value="manager">Menagjer</option>
                         <option value="admin">Admin</option>
                       </select>
                     </div>
-
+                    <div className="flex items-center pt-2 md:col-span-2">
+                      <input id="active" name="active" type="checkbox" checked={formData.active} onChange={handleChange} className="w-4 h-4 text-cyan-500 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500"/>
+                      <label htmlFor="active" className="ml-2 text-sm font-medium text-gray-300">Llogaria aktive</label>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Documents Section */}
+                <div>
+                  <h3 className="text-lg font-semibold text-cyan-400 my-4 border-b border-gray-700 pb-2">Dokumentet</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Data e Fillimit të Punes</label>
+                        <input type="date" name="contract_start_date" value={formData.contract_start_date} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Data e Mbarimit të Punes</label>
+                        <input type="date" name="contract_end_date" value={formData.contract_end_date} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
+                    </div>
                     {isEditing && currentUserForEdit?.contract_url && (
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-300 mb-1">Kontrata Aktuale</label>
@@ -301,12 +348,10 @@ const UserManagement = () => {
                         </a>
                       </div>
                     )}
-
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-300 mb-1">{isEditing ? "Ngarko Kontratë të Re (Opsionale)" : "Ngarko Kontratën (Opsionale)"}</label>
-                      <input id="contract" name="contract" type="file" accept=".pdf" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
+                      <input id="contract" name="contract" type="file" accept=".pdf,.doc,.docx" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
                     </div>
-
                     {isEditing && currentUserForEdit?.license_url && (
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-300 mb-1">Licensa Aktuale</label>
@@ -316,24 +361,17 @@ const UserManagement = () => {
                             </a>
                         </div>
                     )}
-
                     <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-300 mb-1">{isEditing ? "Ngarko Licensë të Re (Opsionale)" : "Ngarko Licensën (Opsionale)"}</label>
-                        <input id="license" name="license" type="file" accept=".pdf" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
+                        <input id="license" name="license" type="file" accept=".pdf,.doc,.docx" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
                     </div>
-
-
-                    <div className="flex items-center pt-2 md:col-span-2">
-                      <input id="active" name="active" type="checkbox" checked={formData.active} onChange={handleChange} className="w-4 h-4 text-cyan-500 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500"/>
-                      <label htmlFor="active" className="ml-2 text-sm font-medium text-gray-300">Llogaria aktive</label>
-                    </div>
+                   </div>
                 </div>
               </form>
             </div>
-             {/* Modal Footer: Placed outside the scrolling area for constant visibility */}
+            
             <div className="p-6 border-t border-gray-700 flex justify-end gap-4">
                 <button type="button" onClick={resetFormAndCloseModals} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors">Anulo</button>
-                {/* The `form` attribute links this button to the form with id="user-form" */}
                 <button type="submit" form="user-form" className="px-4 py-2 bg-cyan-500 text-white font-bold rounded-lg hover:bg-cyan-600 transition-colors flex items-center gap-2" disabled={loading}>
                     <FiCheck />
                     {isEditing ? "Përditëso" : "Krijo"}
@@ -345,7 +383,7 @@ const UserManagement = () => {
 
       {/* --- Password Modal --- */}
       {passwordModalOpen && (
-         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4">
           <div className="bg-gray-800 rounded-lg max-w-md w-full border border-cyan-500/30 shadow-xl">
             <div className="flex justify-between items-center p-6 border-b border-gray-700">
               <h2 className="text-xl font-bold text-white">Ndrysho Fjalëkalimin</h2>

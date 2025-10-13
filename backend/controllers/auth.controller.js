@@ -49,7 +49,6 @@ const setCookie = (res, accessToken) => {
 
 
 export const signup = async (req, res) => {
-  // Use multer to handle profile image upload
   upload.single('profile_image')(req, res, async (err) => {
     if (err) {
       console.error("Multer upload error:", err);
@@ -59,21 +58,18 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: err.message });
     }
 
-    const { name, password, email, number } = req.body;
+    const { name, password, email, number, id_card_number, address } = req.body;
 
     try {
-      // Check if user already exists
       const result = await promisePool.query('SELECT * FROM users WHERE name = $1', [name]);
       if (result.rows.length > 0) {
         return res.status(400).json({ message: "User already exists" });
       }
 
-      // Hash the password
       const hashedPassword = await bcrypt.hash(password, 10);
       
       let profileImageKey = null;
       
-      // Handle profile image upload if file exists
       if (req.file) {
         const key = `profiles/${Date.now()}-${req.file.originalname}`;
         
@@ -82,23 +78,21 @@ export const signup = async (req, res) => {
           key,
           req.file.originalname,
           req.file.mimetype,
-          true // Process as image
+          true
         );
         
         profileImageKey = uploadResult.Key;
       }
 
-      // Insert the new user with status set to false
       const insertResult = await promisePool.query(
-        `INSERT INTO users (name, password, email, number, profile_image_url, role, status)
-         VALUES ($1, $2, $3, $4, $5, 'user', false) 
-         RETURNING id, name, email, number, profile_image_url, role, status`,
-        [name, hashedPassword, email, number, profileImageKey]
+        `INSERT INTO users (name, password, email, number, id_card_number, address, profile_image_url, role, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'user', false) 
+         RETURNING id, name, email, number, id_card_number, address, profile_image_url, role, status`,
+        [name, hashedPassword, email, number, id_card_number, address, profileImageKey]
       );
 
       const newUser = insertResult.rows[0];
       
-      // Process CloudFront URL for profile image in response
       newUser.profile_image_url = newUser.profile_image_url ? getCloudFrontUrl(newUser.profile_image_url) : null;
 
       res.status(201).json(newUser);

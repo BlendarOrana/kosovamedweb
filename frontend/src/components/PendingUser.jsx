@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useAdminStore } from "../stores/useAdminStore";
 import { FiUser, FiMail, FiPhone, FiMapPin, FiCheck, FiRefreshCw, FiClock } from "react-icons/fi";
 import clsx from "clsx";
+import toast from "react-hot-toast";
 
 const PendingUsers = () => {
   const { pendingUsers, loading, getPendingUsers, acceptUser, refreshPendingUsers } = useAdminStore();
   const [processingId, setProcessingId] = useState(null);
   const [selectedRegions, setSelectedRegions] = useState({});
+  const [contractDates, setContractDates] = useState({});
 
   const regions = [
     "Istog",
@@ -28,10 +30,15 @@ const PendingUsers = () => {
   useEffect(() => {
     // Initialize selected regions with user's existing region
     const initialRegions = {};
+    const initialDates = {};
     pendingUsers.forEach(user => {
       initialRegions[user.id] = user.region || "";
+      initialDates[user.id] = {
+        startDate: ""
+      };
     });
     setSelectedRegions(initialRegions);
+    setContractDates(initialDates);
   }, [pendingUsers]);
 
   const handleRegionChange = (userId, region) => {
@@ -41,16 +48,34 @@ const PendingUsers = () => {
     }));
   };
 
+  const handleDateChange = (userId, field, value) => {
+    setContractDates(prev => ({
+      ...prev,
+      [userId]: {
+        ...prev[userId],
+        [field]: value
+      }
+    }));
+  };
+
   const handleAccept = async (userId) => {
     const region = selectedRegions[userId];
+    const dates = contractDates[userId];
     
     if (!region) {
       toast.error("Ju lutem zgjidhni një rajon");
       return;
     }
 
+    if (!dates?.startDate) {
+      toast.error("Ju lutem plotësoni datat e Punes");
+      return;
+    }
+
+
+
     setProcessingId(userId);
-    const success = await acceptUser(userId, region);
+    const success = await acceptUser(userId, region, dates.startDate);
     setProcessingId(null);
     
     if (success && pendingUsers.length === 1) {
@@ -86,39 +111,7 @@ const PendingUsers = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Përdoruesit në Pritje</h1>
-          <p className="text-gray-600 mt-1">
-            Shqyrto dhe prano kërkesa të reja për regjistrim
-          </p>
-        </div>
-        <button
-          onClick={handleRefresh}
-          disabled={loading}
-          className={clsx(
-            "flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors",
-            loading && "opacity-50 cursor-not-allowed"
-          )}
-        >
-          <FiRefreshCw className={clsx("w-4 h-4", loading && "animate-spin")} />
-          <span>Rifresko</span>
-        </button>
-      </div>
 
-      {/* Stats Card */}
-      <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg p-6 text-white">
-        <div className="flex items-center gap-4">
-          <div className="bg-white/20 p-3 rounded-lg">
-            <FiClock className="w-8 h-8" />
-          </div>
-          <div>
-            <p className="text-sm opacity-90">Total në pritje</p>
-            <p className="text-3xl font-bold">{pendingUsers.length}</p>
-          </div>
-        </div>
-      </div>
 
       {/* Pending Users List */}
       {pendingUsers.length === 0 ? (
@@ -200,13 +193,35 @@ const PendingUsers = () => {
                 </select>
               </div>
 
+              {/* Contract Dates */}
+              <div className="mb-4 space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Data e Fillimit të Punes
+                  </label>
+                  <input
+                    type="date"
+                    value={contractDates[user.id]?.startDate || ""}
+                    onChange={(e) => handleDateChange(user.id, "startDate", e.target.value)}
+                    className="w-full bg-white border border-gray-300 rounded-lg p-2.5 text-gray-700 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  />
+                </div>
+           
+              </div>
+
               {/* Action Button */}
               <button
                 onClick={() => handleAccept(user.id)}
-                disabled={processingId === user.id || !selectedRegions[user.id]}
+                disabled={
+                  processingId === user.id || 
+                  !selectedRegions[user.id] ||
+                  !contractDates[user.id]?.startDate
+                }
                 className={clsx(
                   "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all",
-                  processingId === user.id || !selectedRegions[user.id]
+                  processingId === user.id || 
+                  !selectedRegions[user.id] ||
+                  !contractDates[user.id]?.startDate 
                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                     : "bg-green-500 text-white hover:bg-green-600 hover:shadow-md"
                 )}

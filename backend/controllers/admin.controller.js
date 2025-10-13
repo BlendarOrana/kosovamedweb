@@ -24,7 +24,8 @@ export const getAllUsers = async (req, res) => {
   try {
 
     let query = `
-      SELECT id, name, number, role, active, region, title, contract_url, email, profile_image_url, status
+      SELECT id, name, number, role, active, region, title, contract_url, email, profile_image_url, status,
+             id_card_number, address, contract_start_date, contract_end_date, license_url
       FROM users
     `;
     
@@ -34,7 +35,6 @@ export const getAllUsers = async (req, res) => {
     if (req.user.role === 'manager') {
       query += ` WHERE region = $1`;
       queryParams.push(req.user.region);
-    } else {
     }
     
     
@@ -44,7 +44,8 @@ export const getAllUsers = async (req, res) => {
     const users = result.rows.map(user => ({
       ...user,
       contract_url: user.contract_url ? getCloudFrontUrl(user.contract_url) : null,
-      profile_image_url: user.profile_image_url ? getCloudFrontUrl(user.profile_image_url) : null
+      profile_image_url: user.profile_image_url ? getCloudFrontUrl(user.profile_image_url) : null,
+      license_url: user.license_url ? getCloudFrontUrl(user.license_url) : null
     }));
     
     res.json(users);
@@ -53,7 +54,6 @@ export const getAllUsers = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
 // Get a single user by ID
 export const getUserById = async (req, res) => {
   const { id } = req.params;
@@ -170,7 +170,11 @@ export const updateUser = async (req, res) => {
       active,
       region,
       title,
-      email
+      email,
+      id_card_number,
+      address,
+      contract_start_date,
+      contract_end_date
     } = req.body;
     
     try {
@@ -234,10 +238,14 @@ export const updateUser = async (req, res) => {
       // Update the user
       const result = await promisePool.query(`
         UPDATE users
-        SET name = $1, number = $2, role = $3, active = $4, region = $5, title = $6, contract_url = $7, email = $8, license_url = $9
-        WHERE id = $10
-        RETURNING id, name, number, role, active, region, title, contract_url, email, license_url
-      `, [name, number, role, active, region, title, contractKey, email, licenseKey, id]);
+        SET name = $1, number = $2, role = $3, active = $4, region = $5, title = $6, 
+            contract_url = $7, email = $8, license_url = $9, id_card_number = $10, 
+            address = $11, contract_start_date = $12, contract_end_date = $13
+        WHERE id = $14
+        RETURNING id, name, number, role, active, region, title, contract_url, email, 
+                  license_url, id_card_number, address, contract_start_date, contract_end_date
+      `, [name, number, role, active, region, title, contractKey, email, licenseKey, 
+          id_card_number, address, contract_start_date, contract_end_date, id]);
       
       if (result.rows.length === 0) {
         return res.status(404).json({ message: 'User not found' });
@@ -255,6 +263,7 @@ export const updateUser = async (req, res) => {
     }
   });
 };
+
 
 // Change user password
 export const changeUserPassword = async (req, res) => {
@@ -359,13 +368,13 @@ export const updatePushToken = async (req, res) => {
 
 export const acceptUser = async (req, res) => {
   const { userId } = req.params;
-  const { region } = req.body; // Get region from request body
+  const { region, contractStartDate } = req.body;
 
   try {
-    // Update both status and region
+    // Update status, region, and contract start date
     await promisePool.query(
-      'UPDATE users SET status = true, region = $1 WHERE id = $2',
-      [region, userId]
+      'UPDATE users SET status = true, region = $1, contract_start_date = $2 WHERE id = $3',
+      [region, contractStartDate, userId]
     );
 
     res.status(200).json({ message: "User accepted successfully" });
@@ -375,17 +384,14 @@ export const acceptUser = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 export const getPendingUsers = async (req, res) => {
   try {
-    const managerRegion = req.user.region; // Get region from authenticated user
 
     const result = await promisePool.query(
       `SELECT id, name, email, number, profile_image_url, region, created_at 
        FROM users 
-       WHERE status = false AND region = $1 
+       WHERE status = false
        ORDER BY created_at DESC`,
-      [managerRegion]
     );
 
     const users = result.rows.map(user => ({
