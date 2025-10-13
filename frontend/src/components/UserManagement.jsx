@@ -214,7 +214,6 @@ const UserManagement = () => {
                     <div className="flex justify-end gap-2">
                       <button onClick={() => handleEditUser(user.id)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-cyan-400 transition-colors" title="Modifiko"><FiEdit2 size={16} /></button>
                       <button onClick={() => handlePasswordChange(user.id)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-yellow-400 transition-colors" title="Ndrysho fjalëkalimin"><FiKey size={16} /></button>
-                      <button onClick={() => handleDeleteUser(user.id)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-red-400 transition-colors" title="Fshij"><FiTrash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -270,8 +269,20 @@ const UserManagement = () => {
                     )}
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-1">Rajoni</label>
-                      <input type="text" name="region" value={formData.region} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
-                    </div>
+                      <select name="region" value={formData.region} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">
+                        <option value="">Zgjedh Rajonin</option>
+                        <option value="Istog">Istog</option>
+                        <option value="Gjilan">Gjilan</option>
+                        <option value="Malishevë">Malishevë</option>
+                        <option value="Skenderaj">Skenderaj</option>
+                        <option value="Viti">Viti</option>
+                        <option value="Klinë">Klinë</option>
+                        <option value="Ferizaj">Ferizaj</option>
+                        <option value="Fushë Kosovë">Fushë Kosovë</option>
+                        <option value="Mitrovicë">Mitrovicë</option>
+                        <option value="Prizren">Prizren</option>
+                      </select>
+                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-1">Roli</label>
                       <select name="role" value={formData.role} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">

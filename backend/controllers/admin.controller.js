@@ -22,12 +22,7 @@ const upload = multer({
 // Get all users
 export const getAllUsers = async (req, res) => {
   try {
-    // Debug logs
-    console.log('=== getAllUsers Debug ===');
-    console.log('req.user:', req.user);
-    console.log('req.user.role:', req.user?.role);
-    console.log('req.user.region:', req.user?.region);
-    
+
     let query = `
       SELECT id, name, number, role, active, region, title, contract_url, email, profile_image_url, status
       FROM users
@@ -39,19 +34,12 @@ export const getAllUsers = async (req, res) => {
     if (req.user.role === 'manager') {
       query += ` WHERE region = $1`;
       queryParams.push(req.user.region);
-      console.log('Manager filter applied. Region:', req.user.region);
     } else {
-      console.log('No manager filter - showing all users');
     }
     
-    console.log('Final query:', query);
-    console.log('Query params:', queryParams);
     
     const result = await promisePool.query(query, queryParams);
-    
-    console.log('Query result count:', result.rows.length);
-    console.log('Sample user regions:', result.rows.slice(0, 3).map(u => u.region));
-    
+
     // Process CloudFront URLs for contract_url and profile_image_url
     const users = result.rows.map(user => ({
       ...user,
@@ -359,5 +347,58 @@ export const updatePushToken = async (req, res) => {
       message: "Failed to update push token",
       error: error.message 
     });
+  }
+};
+
+
+
+
+
+
+
+
+export const acceptUser = async (req, res) => {
+  const { userId } = req.params;
+  const { region } = req.body; // Get region from request body
+
+  try {
+    // Update both status and region
+    await promisePool.query(
+      'UPDATE users SET status = true, region = $1 WHERE id = $2',
+      [region, userId]
+    );
+
+    res.status(200).json({ message: "User accepted successfully" });
+
+  } catch (error) {
+    console.log("Error in acceptUser controller", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const getPendingUsers = async (req, res) => {
+  try {
+    const managerRegion = req.user.region; // Get region from authenticated user
+
+    const result = await promisePool.query(
+      `SELECT id, name, email, number, profile_image_url, region, created_at 
+       FROM users 
+       WHERE status = false AND region = $1 
+       ORDER BY created_at DESC`,
+      [managerRegion]
+    );
+
+    const users = result.rows.map(user => ({
+      ...user,
+      profile_image_url: user.profile_image_url 
+        ? getCloudFrontUrl(user.profile_image_url) 
+        : null
+    }));
+
+    res.status(200).json({ users });
+
+  } catch (error) {
+    console.log("Error in getPendingUsers controller", error.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

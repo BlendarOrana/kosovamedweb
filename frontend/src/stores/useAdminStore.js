@@ -4,14 +4,15 @@ import { toast } from "react-hot-toast";
 
 export const useAdminStore = create((set, get) => ({
   users: [],
+  pendingUsers: [],
   currentUser: null,
   loading: false,
   error: null,
-  usersLoaded: false, // Add flag to track if users have been loaded
+  usersLoaded: false,
+  pendingUsersLoaded: false,
   
   // Get all users (with caching)
   getAllUsers: async () => {
-    // If users are already loaded, skip the API call
     if (get().usersLoaded && get().users.length > 0) {
       return;
     }
@@ -44,7 +45,71 @@ export const useAdminStore = create((set, get) => ({
     }
   },
   
-
+  // Get pending users (with caching)
+  getPendingUsers: async () => {
+    if (get().pendingUsersLoaded && get().pendingUsers.length > 0) {
+      return;
+    }
+    
+    set({ loading: true });
+    try {
+      const res = await axios.get("/admin/users/pending");
+      set({ 
+        pendingUsers: res.data.users, 
+        loading: false, 
+        error: null, 
+        pendingUsersLoaded: true 
+      });
+    } catch (error) {
+      set({ 
+        loading: false, 
+        error: error.response?.data?.message || "Failed to fetch pending users" 
+      });
+      toast.error(error.response?.data?.message || "Failed to fetch pending users");
+    }
+  },
+  
+  // Force refresh pending users (bypass cache)
+  refreshPendingUsers: async () => {
+    set({ loading: true, pendingUsersLoaded: false });
+    try {
+      const res = await axios.get("/admin/users/pending");
+      set({ 
+        pendingUsers: res.data.users, 
+        loading: false, 
+        error: null, 
+        pendingUsersLoaded: true 
+      });
+    } catch (error) {
+      set({ 
+        loading: false, 
+        error: error.response?.data?.message || "Failed to fetch pending users" 
+      });
+      toast.error(error.response?.data?.message || "Failed to fetch pending users");
+    }
+  },
+  
+  // Accept a pending user
+acceptUser: async (userId, region) => {
+  set({ loading: true });
+  try {
+    await axios.put(`/admin/users/${userId}/accept`, { region }); // Send region in body
+    set(state => ({
+      pendingUsers: state.pendingUsers.filter(user => user.id !== userId),
+      loading: false,
+      error: null
+    }));
+    toast.success("Përdoruesi u pranua me sukses");
+    return true;
+  } catch (error) {
+    set({ 
+      loading: false, 
+      error: error.response?.data?.message || "Failed to accept user" 
+    });
+    toast.error(error.response?.data?.message || "Dështoi pranimi i përdoruesit");
+    return false;
+  }
+},
   
   // Create a new user
   createUser: async (userData) => {
@@ -144,6 +209,6 @@ export const useAdminStore = create((set, get) => ({
   
   // Reset cache (useful for logout or manual refresh)
   resetUsersCache: () => {
-    set({ users: [], usersLoaded: false });
+    set({ users: [], usersLoaded: false, pendingUsers: [], pendingUsersLoaded: false });
   }
 }));

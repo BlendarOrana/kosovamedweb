@@ -161,18 +161,21 @@ const Reports = () => {
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [filters, setFilters] = useState({});
 
-  // Këto do të vijnë nga store-et tuaja aktuale, jo nga mock
+  // Hardcoded regions
+  const REGIONS = ['Istog', 'Gjilan', 'Malishevë', 'Skenderaj', 'Viti', 'Klinë', 'Ferizaj', 'Fushë Kosovë', 'Mitrovicë', 'Prizren'];
+
+  // Këto do të vijnë nga store-et tuaja aktuale
   const { downloadAttendanceReport, downloadVacationReport, loading, downloadProgress } = useReportsStore();
-  const { regions, titles } = useUserStore();
+  const { titles = [] } = useUserStore();
 
   const regionOptions = useMemo(() => [
     { value: '', label: 'Të gjitha Rajonet' },
-    ...regions.map((region) => ({ value: region, label: region })),
-  ], [regions]);
+    ...REGIONS.map((region) => ({ value: region, label: region })),
+  ], []);
 
   const titleOptions = useMemo(() => [
     { value: '', label: 'Të gjithë Titujt' },
-    ...titles.map((title) => ({ value: title, label: title })),
+    ...(titles || []).map((title) => ({ value: title, label: title })),
   ], [titles]);
 
   const reportDefinitions = useMemo(() => [

@@ -5,6 +5,8 @@ import {
   createUser, 
   updateUser, 
   changeUserPassword, 
+  getPendingUsers,
+  acceptUser,
   deleteUser} from '../controllers/admin.controller.js';
 import { protectRoute,adminRoute } from "../middleware/auth.middleware.js";
 
@@ -12,6 +14,10 @@ const router = express.Router();
 
 // Get all users
 router.get('/users', protectRoute,adminRoute, getAllUsers);
+
+
+router.get('/users/pending', protectRoute,adminRoute, getPendingUsers);
+router.put('/users/:userId/accept', protectRoute,adminRoute, acceptUser);
 
 // Get a specific user
 router.get('/users/:id', protectRoute,adminRoute, getUserById);
@@ -27,6 +33,8 @@ router.patch('/users/:id/password', protectRoute,adminRoute, changeUserPassword)
 
 // Delete a user
 router.delete('/users/:id', protectRoute,adminRoute, deleteUser);
+
+
 
 
 
