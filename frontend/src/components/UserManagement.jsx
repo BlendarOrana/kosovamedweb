@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAdminStore } from "../stores/useAdminStore"; // Assuming your store is here
-import { FiUser, FiEdit2, FiTrash2, FiKey, FiPlus, FiX, FiCheck, FiSearch, FiExternalLink, FiRefreshCw } from "react-icons/fi";
+import { useReportsStore } from "../stores/useReportsStore";
 
+import { FiUser, FiEdit2,  FiKey, FiPlus, FiX, FiCheck, FiSearch, FiExternalLink, FiRefreshCw, FiFileText } from "react-icons/fi";
 const UserManagement = () => {
   const {
     users,
@@ -12,6 +13,8 @@ const UserManagement = () => {
     updateUser,
     changeUserPassword,
   } = useAdminStore();
+
+const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = useReportsStore();
 
   const initialFormData = {
     name: "",
@@ -153,6 +156,21 @@ const UserManagement = () => {
     }
   };
 
+  const handleDownloadPDF = async (userId) => {
+  try {
+    await downloadContractTerminationPDF(userId);
+  } catch (error) {
+    console.error("Error downloading PDF:", error);
+  }
+};
+
+const handleDownloadCertificate = async (userId) => {
+  try {
+    await downloadEmploymentCertificatePDF(userId);
+  } catch (error) {
+    console.error("Error downloading certificate:", error);
+  }
+};
 
 
   const getRoleDisplayName = (role) => (role.charAt(0).toUpperCase() + role.slice(1));
@@ -224,12 +242,38 @@ const UserManagement = () => {
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{user.active ? 'Aktiv' : 'Joaktiv'}</span>
                   </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => handleEditUser(user.id)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-cyan-400 transition-colors" title="Modifiko"><FiEdit2 size={16} /></button>
-                      <button onClick={() => handlePasswordChange(user.id)} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-yellow-400 transition-colors" title="Ndrysho fjalëkalimin"><FiKey size={16} /></button>
-                    </div>
-                  </td>
+<td className="py-3 px-4 text-right">
+  <div className="flex justify-end gap-2">
+    <button 
+      onClick={() => handleEditUser(user.id)} 
+      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-cyan-400 transition-colors" 
+      title="Modifiko"
+    >
+      <FiEdit2 size={16} />
+    </button>
+    <button 
+      onClick={() => handlePasswordChange(user.id)} 
+      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-yellow-400 transition-colors" 
+      title="Ndrysho fjalëkalimin"
+    >
+      <FiKey size={16} />
+    </button>
+    <button 
+      onClick={() => handleDownloadPDF(user.id)} 
+      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-green-400 transition-colors" 
+      title="Shkarko PDF të ndërprerjes"
+    >
+      <FiFileText size={16} />
+    </button>
+    <button 
+      onClick={() => handleDownloadCertificate(user.id)} 
+      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-blue-400 transition-colors" 
+      title="Shkarko vërtetimin e punësimit"
+    >
+      <FiFileText size={16} />
+    </button>
+  </div>
+</td>
                 </tr>
               ))
             )}

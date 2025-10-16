@@ -117,6 +117,99 @@ export const useReportsStore = create((set, get) => ({
   },
   
 
+  // Download contract termination PDF
+downloadContractTerminationPDF: async (userId) => {
+  set({ loading: true, downloadProgress: 0 });
+  
+  try {
+    const response = await axios.get(`/reports/contract-termination-pdf?userId=${userId}`, {
+      responseType: 'blob',
+      onDownloadProgress: (progressEvent) => {
+        const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        set({ downloadProgress: progress });
+      }
+    });
+    
+    const blob = new Blob([response.data], { 
+      type: 'application/pdf' 
+    });
+    
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = 'contract_termination.pdf';
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (filenameMatch) filename = filenameMatch[1];
+    }
+    
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+    toast.success('PDF-ja e ndërprerjes së kontratës u shkarkua me sukses!');
+    set({ loading: false, downloadProgress: 0 });
+    return true;
+    
+  } catch (error) {
+    set({ loading: false, downloadProgress: 0 });
+    const errorMessage = error.response?.data?.message || 'Gabim në shkarkimin e PDF-së';
+    toast.error(errorMessage);
+    throw error;
+  }
+},
+
+
+// Download employment certificate PDF
+downloadEmploymentCertificatePDF: async (userId) => {
+  set({ loading: true, downloadProgress: 0 });
+  
+  try {
+    const response = await axios.get(`/reports/employment-certificate-pdf?userId=${userId}`, {
+      responseType: 'blob',
+      onDownloadProgress: (progressEvent) => {
+        const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        set({ downloadProgress: progress });
+      }
+    });
+    
+    const blob = new Blob([response.data], { 
+      type: 'application/pdf' 
+    });
+    
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = 'employment_certificate.pdf';
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+      if (filenameMatch) filename = filenameMatch[1];
+    }
+    
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+    toast.success('Vërtetimi i punësimit u shkarkua me sukses!');
+    set({ loading: false, downloadProgress: 0 });
+    return true;
+    
+  } catch (error) {
+    set({ loading: false, downloadProgress: 0 });
+    const errorMessage = error.response?.data?.message || 'Gabim në shkarkimin e vërtetimit';
+    toast.error(errorMessage);
+    throw error;
+  }
+},
+
   
   // Reset store state
   reset: () => set({ loading: false, downloadProgress: 0 })
