@@ -408,3 +408,86 @@ export const getPendingUsers = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+
+
+
+export const getAllShiftRequests = async (req, res) => {
+  try {
+    const result = await promisePool.query(
+      `SELECT 
+        sr.id, 
+        sr.user_id, 
+        sr.requested_shift, 
+        sr.status, 
+        sr.created_at,
+        u.name,
+        u.email,
+        u.profile_image_url,
+        u.region
+      FROM shift_requests sr
+      JOIN users u ON sr.user_id = u.id
+      ORDER BY sr.created_at DESC`
+    );
+
+    const requests = result.rows.map(request => ({
+      ...request,
+      profile_image_url: request.profile_image_url 
+        ? getCloudFrontUrl(request.profile_image_url) 
+        : null
+    }));
+
+    // Classify requests by status
+    const classified = {
+      pending: requests.filter(r => r.status === 'pending'),
+      approved: requests.filter(r => r.status === 'approved'),
+      rejected: requests.filter(r => r.status === 'rejected')
+    };
+
+    res.status(200).json({ requests: classified });
+
+  } catch (error) {
+    console.log("Error in getAllShiftRequests controller", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Update shift request status (approve or reject)
+export const updateShiftRequestStatus = async (req, res) => {
+  const { requestId } = req.params;
+  const { status } = req.body; // 'approved' or 'rejected'
+
+  try {
+    // Validate status
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: "Invalid status. Must be 'approved' or 'rejected'" });
+    }
+
+    // Check if request exists and is pending
+    const requestCheck = await promisePool.query(
+      'SELECT status FROM shift_requests WHERE id = $1',
+      [requestId]
+    );
+
+    if (requestCheck.rows.length === 0) {
+      return res.status(404).json({ message: "Shift request not found" });
+    }
+
+    if (requestCheck.rows[0].status !== 'pending') {
+      return res.status(400).json({ message: "This request has already been processed" });
+    }
+
+    // Update status
+    await promisePool.query(
+      'UPDATE shift_requests SET status = $1 WHERE id = $2',
+      [status, requestId]
+    );
+
+    res.status(200).json({ message: `Shift request ${status} successfully` });
+
+  } catch (error) {
+    console.log("Error in updateShiftRequestStatus controller", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

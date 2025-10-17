@@ -8,8 +8,8 @@ import {
   logout, 
   getProfile, 
   getAllUsers,
-  getTitles,
-  getRegions
+createShiftRequest,
+getMyShiftRequests
 } from '../controllers/auth.controller.js';
 import { protectRoute, adminRoute } from "../middleware/auth.middleware.js";
 
@@ -26,5 +26,11 @@ router.get('/users', protectRoute, adminRoute, getAllUsers);
 router.post('/mobile-login', mobileLogin);
 
 // NEW: FCM token update route
+
+
+
+router.post('/request', protectRoute, createShiftRequest);
+router.get('/shift/request',protectRoute,getMyShiftRequests)
+
 
 export default router;
