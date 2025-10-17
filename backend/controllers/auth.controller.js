@@ -214,7 +214,8 @@ export const mobileLogin = async (req, res) => {
           active: user.active,
           region: user.region,
           contract_url: contractUrl,
-          profile_image_url: imageUrl
+          profile_image_url: imageUrl,
+          shift: user.shift // Add this line
         }
       });
     } else {
@@ -412,5 +413,68 @@ export const getTitles = async (req, res) => {
       success: false,
       message: "Error fetching titles" 
     });
+  }
+};
+
+
+
+
+
+
+export const createShiftRequest = async (req, res) => {
+  const { requested_shift } = req.body;
+  const userId = req.user.id; // Assuming you have auth middleware that sets req.user
+
+  try {
+    // Validate requested_shift
+    if (![1, 2].includes(requested_shift)) {
+      return res.status(400).json({ message: "Invalid shift. Must be 1 or 2" });
+    }
+
+    // Check if user already has a pending request
+    const existingRequest = await promisePool.query(
+      'SELECT id FROM shift_requests WHERE user_id = $1 AND status = $2',
+      [userId, 'pending']
+    );
+
+    if (existingRequest.rows.length > 0) {
+      return res.status(400).json({ message: "You already have a pending shift request" });
+    }
+
+    // Create new shift request
+    const result = await promisePool.query(
+      'INSERT INTO shift_requests (user_id, requested_shift) VALUES ($1, $2) RETURNING *',
+      [userId, requested_shift]
+    );
+
+    res.status(201).json({ 
+      message: "Shift request submitted successfully",
+      request: result.rows[0]
+    });
+
+  } catch (error) {
+    console.log("Error in createShiftRequest controller", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Get user's own shift requests
+export const getMyShiftRequests = async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const result = await promisePool.query(
+      `SELECT id, requested_shift, status, created_at 
+       FROM shift_requests 
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    res.status(200).json({ requests: result.rows });
+
+  } catch (error) {
+    console.log("Error in getMyShiftRequests controller", error.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

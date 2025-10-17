@@ -7,6 +7,8 @@ import {
   changeUserPassword, 
   getPendingUsers,
   acceptUser,
+  getAllShiftRequests,
+  updateShiftRequestStatus,
   deleteUser} from '../controllers/admin.controller.js';
 import { protectRoute,adminRoute } from "../middleware/auth.middleware.js";
 
@@ -35,6 +37,10 @@ router.patch('/users/:id/password', protectRoute,adminRoute, changeUserPassword)
 router.delete('/users/:id', protectRoute,adminRoute, deleteUser);
 
 
+
+
+router.get('/shift-requests/all', protectRoute,adminRoute,getAllShiftRequests );
+router.patch('/shift-requests/update/:requestId', protectRoute,adminRoute, updateShiftRequestStatus);
 
 
 
