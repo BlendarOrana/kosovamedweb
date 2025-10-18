@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { promisePool } from "../lib/db.js";
 import { uploadToS3, deleteFromS3, getCloudFrontUrl } from '../lib/s3.js';
 import multer from 'multer';
+import NotificationService from '../services/notification.service.js'
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -415,8 +416,8 @@ export const getPendingUsers = async (req, res) => {
 
 export const getAllShiftRequests = async (req, res) => {
   try {
-    const result = await promisePool.query(
-      `SELECT 
+    // Base query
+    let query = `SELECT 
         sr.id, 
         sr.user_id, 
         sr.requested_shift, 
@@ -427,9 +428,19 @@ export const getAllShiftRequests = async (req, res) => {
         u.profile_image_url,
         u.region
       FROM shift_requests sr
-      JOIN users u ON sr.user_id = u.id
-      ORDER BY sr.created_at DESC`
-    );
+      JOIN users u ON sr.user_id = u.id`;
+    
+    const queryParams = [];
+    
+    // If user is a manager, filter by their region
+    if (req.user.role === 'manager') {
+      query += ` WHERE u.region = $1`;
+      queryParams.push(req.user.region);
+    }
+    
+    query += ` ORDER BY sr.created_at DESC`;
+
+    const result = await promisePool.query(query, queryParams);
 
     const requests = result.rows.map(request => ({
       ...request,
@@ -454,19 +465,18 @@ export const getAllShiftRequests = async (req, res) => {
 };
 
 // Update shift request status (approve or reject)
+// Update shift request status (approve or reject)
 export const updateShiftRequestStatus = async (req, res) => {
   const { requestId } = req.params;
-  const { status } = req.body; // 'approved' or 'rejected'
+  const { status } = req.body;
 
   try {
-    // Validate status
     if (!['approved', 'rejected'].includes(status)) {
       return res.status(400).json({ message: "Invalid status. Must be 'approved' or 'rejected'" });
     }
 
-    // Check if request exists and is pending
     const requestCheck = await promisePool.query(
-      'SELECT status FROM shift_requests WHERE id = $1',
+      'SELECT sr.*, u.name FROM shift_requests sr JOIN users u ON sr.user_id = u.id WHERE sr.id = $1',
       [requestId]
     );
 
@@ -478,10 +488,36 @@ export const updateShiftRequestStatus = async (req, res) => {
       return res.status(400).json({ message: "This request has already been processed" });
     }
 
-    // Update status
+    const request = requestCheck.rows[0];
+
+    // Update shift request status
     await promisePool.query(
       'UPDATE shift_requests SET status = $1 WHERE id = $2',
       [status, requestId]
+    );
+
+    // If approved, update the user's shift in the users table
+    if (status === 'approved') {
+      await promisePool.query(
+        'UPDATE users SET shift = $1 WHERE id = $2',
+        [request.requested_shift, request.user_id]
+      );
+    }
+
+    // Send notification
+    const title = status === 'approved' 
+      ? 'Kërkesa për ndryshim turni u pranua' 
+      : 'Kërkesa për ndryshim turni u refuzua';
+    
+    const body = status === 'approved'
+      ? `Kërkesa juaj për ndryshim në turnin ${request.requested_shift} u pranua me sukses.`
+      : `Kërkesa juaj për ndryshim në turnin ${request.requested_shift} u refuzua.`;
+
+    await NotificationService.sendPushNotification(
+      request.user_id,
+      title,
+      body,
+      { type: 'shift_request', status, requestId }
     );
 
     res.status(200).json({ message: `Shift request ${status} successfully` });

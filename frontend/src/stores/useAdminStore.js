@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 export const useAdminStore = create((set, get) => ({
   users: [],
   pendingUsers: [],
+  shiftRequests: { pending: [], approved: [], rejected: [] }, // Add this line
   currentUser: null,
   loading: false,
   error: null,
@@ -205,9 +206,67 @@ acceptUser: async (userId, region, contractStartDate) => {
   clearError: () => {
     set({ error: null });
   },
+
+
+
+
+
+getAllShiftRequests: async () => {
+  set({ loading: true });
+  try {
+    const res = await axios.get("/admin/shift-requests");
+    set({ 
+      shiftRequests: res.data.requests, 
+      loading: false, 
+      error: null 
+    });
+  } catch (error) {
+    set({ 
+      loading: false, 
+      error: error.response?.data?.message || "Failed to fetch shift requests" 
+    });
+    toast.error(error.response?.data?.message || "Failed to fetch shift requests");
+  }
+},
+
+// Update shift request status (approve/reject)
+updateShiftRequestStatus: async (requestId, status) => {
+  set({ loading: true });
+  try {
+    const res = await axios.patch(`/admin/shift-requests/${requestId}`, { status });
+    
+    // Update local state
+    set(state => ({
+      shiftRequests: {
+        pending: state.shiftRequests.pending.filter(r => r.id !== requestId),
+        approved: status === 'approved' 
+          ? [...state.shiftRequests.approved, state.shiftRequests.pending.find(r => r.id === requestId)]
+          : state.shiftRequests.approved,
+        rejected: status === 'rejected'
+          ? [...state.shiftRequests.rejected, state.shiftRequests.pending.find(r => r.id === requestId)]
+          : state.shiftRequests.rejected
+      },
+      loading: false,
+      error: null
+    }));
+    
+    return true;
+  } catch (error) {
+    set({ 
+      loading: false, 
+      error: error.response?.data?.message || "Failed to update shift request" 
+    });
+    toast.error(error.response?.data?.message || "Failed to update shift request");
+    return false;
+  }
+},
+
+
   
   // Reset cache (useful for logout or manual refresh)
   resetUsersCache: () => {
     set({ users: [], usersLoaded: false, pendingUsers: [], pendingUsersLoaded: false });
   }
+
+
 }));

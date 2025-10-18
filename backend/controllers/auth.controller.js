@@ -188,6 +188,18 @@ export const mobileLogin = async (req, res) => {
         }
       }
 
+      let licenseUrl = null;
+      if (user.license_url) {
+        try {
+          const fileUrlResult = getCloudFrontUrl(user.license_url);
+          if (fileUrlResult) {
+            licenseUrl = fileUrlResult;
+          }
+        } catch (error) {
+          console.error("Error generating file URL for license:", error.message);
+        }
+      }
+
       let imageUrl = null;
       if (user.profile_image_url) {
         try {
@@ -214,8 +226,9 @@ export const mobileLogin = async (req, res) => {
           active: user.active,
           region: user.region,
           contract_url: contractUrl,
+          license_url: licenseUrl,
           profile_image_url: imageUrl,
-          shift: user.shift // Add this line
+          shift: user.shift
         }
       });
     } else {
@@ -308,16 +321,51 @@ export const mobileLogout = async (req, res) => {
 
 export const getProfile = async (req, res) => {
   try {
-    const user = req.user; 
+    const userId = req.user.id;
+
+    // Fetch complete user data from database
+    const result = await promisePool.query(
+      `SELECT id, name, email, number, role, status, 
+              profile_image_url, contract_url, license_url, 
+              id_card_number, address, shift, region
+       FROM users 
+       WHERE id = $1`,
+      [userId]
+    );
+
+    const user = result.rows[0];
 
     if (user) {
+      // Generate CloudFront URLs for S3 files
+      let profileImageUrl = null;
+      if (user.profile_image_url) {
+        profileImageUrl = getCloudFrontUrl(user.profile_image_url);
+      }
+
+      let contractUrl = null;
+      if (user.contract_url) {
+        contractUrl = getCloudFrontUrl(user.contract_url);
+      }
+
+      let licenseUrl = null;
+      if (user.license_url) {
+        licenseUrl = getCloudFrontUrl(user.license_url);
+      }
+
       res.json({
-        _id: user.id,
         id: user.id,
         name: user.name,
+        email: user.email,
         number: user.number,
         role: user.role,
-        active: user.active,
+        status: user.status,
+        profile_image_url: profileImageUrl,
+        contract_url: contractUrl,
+        license_url: licenseUrl,
+        id_card_number: user.id_card_number,
+        address: user.address,
+        shift: user.shift,
+        region: user.region
       });
     } else {
       res.status(404).json({ message: "User not found" });
