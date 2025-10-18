@@ -89,8 +89,8 @@ app.use(helmet({
 
 // 2. Rate Limiting
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, 
+  windowMs: 10 * 60 * 1000, // 15 minutes
+  max: 150, 
   message: { error: "Too many requests from this IP, please try again after 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -172,8 +172,8 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // --- ERROR HANDLING ---
-// 404 handler for API routes
-app.use('/api/*', (req, res) => {
+// 404 handler for API routes - EXPRESS 5 COMPATIBLE
+app.use('/api/*splat', (req, res) => {
   res.status(404).json({ error: "API route not found." });
 });
 
@@ -200,5 +200,3 @@ app.listen(PORT, async () => {
     console.error('❌ S3 connection failed.');
   }
 });
-
-
