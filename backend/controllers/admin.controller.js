@@ -504,14 +504,17 @@ export const updateShiftRequestStatus = async (req, res) => {
       );
     }
 
+    // Convert shift number to text
+    const shiftText = request.requested_shift == 1 ? 'paradites' : 'pasdites';
+
     // Send notification
     const title = status === 'approved' 
       ? 'Kërkesa për ndryshim turni u pranua' 
       : 'Kërkesa për ndryshim turni u refuzua';
     
     const body = status === 'approved'
-      ? `Kërkesa juaj për ndryshim në turnin ${request.requested_shift} u pranua me sukses.`
-      : `Kërkesa juaj për ndryshim në turnin ${request.requested_shift} u refuzua.`;
+      ? `Kërkesa juaj për ndryshim në turnin ${shiftText} u pranua me sukses.`
+      : `Kërkesa juaj për ndryshim në turnin ${shiftText} u refuzua.`;
 
     await NotificationService.sendPushNotification(
       request.user_id,
