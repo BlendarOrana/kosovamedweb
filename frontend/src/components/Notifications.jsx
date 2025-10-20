@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNotificationStore } from "../stores/useNotificationStore";
-import { useUserStore } from "../stores/useUserStore";
 import { FiSend, FiUsers, FiGlobe, FiUser, FiBarChart2 } from "react-icons/fi";
 
 const Notifications = () => {
@@ -111,7 +110,6 @@ const SingleUserForm = () => {
 
 const BatchForm = () => {
   const { batchSending, sendBatchNotifications } = useNotificationStore();
-  const { regions, titles } = useUserStore();
   const [target, setTarget] = useState("role"); // 'role' or 'region'
   const [selectedValue, setSelectedValue] = useState("");
   const [title, setTitle] = useState("");
@@ -147,21 +145,17 @@ const BatchForm = () => {
             setSelectedValue(""); // Reset selection on change
           }}
           options={[
-            { value: "role", label: "Roli" },
+            { value: "role", label: "Titulli" },
             { value: "region", label: "Regjioni" },
           ]}
         />
-        {/* Dynamic Select for Role/Region */}
-        <SelectField
+        {/* Dynamic Input for Role/Region */}
+        <InputField
           id="target-value"
-          label={`Zgjidh ${target === "role" ? "Rolin" : "Regjionin"}`}
+          label={`Shto ${target === "role" ? "Titullin" : "Regjionin"}`}
           value={selectedValue}
           onChange={(e) => setSelectedValue(e.target.value)}
-          options={
-            target === "role"
-              ? titles.map((t) => ({ value: t, label: t }))
-              : regions.map((r) => ({ value: r, label: r }))
-          }
+          placeholder={target === "role" ? "p.sh., Doktor" : "p.sh., Prishtinë"}
         />
       </div>
       <InputField
