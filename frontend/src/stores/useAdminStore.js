@@ -91,11 +91,15 @@ export const useAdminStore = create((set, get) => ({
   },
   
   // Accept a pending user
-acceptUser: async (userId, region, contractStartDate) => {
+acceptUser: async (userId, region, shift, contractStartDate) => {
   try {
     const res = await axios.put(
       `/admin/users/${userId}/accept`,
-      { region, contractStartDate }
+      { 
+        region, 
+        shift: parseInt(shift), // Convert to integer to ensure it's 1 or 2
+        contractStartDate 
+      }
     );
     
     if (res.status === 200) {
@@ -110,7 +114,6 @@ acceptUser: async (userId, region, contractStartDate) => {
     return false;
   }
 },
-  
   // Create a new user
   createUser: async (userData) => {
     set({ loading: true });
