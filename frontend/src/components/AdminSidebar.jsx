@@ -137,11 +137,7 @@ const AdminSidebar = ({ activeTab, onNavigate, isCollapsed, setIsCollapsed }) =>
                         {!isCollapsed && <span className="text-sm font-medium">Zvogëlo</span>}
                     </button>
                 </div>
-                <div className="p-2 border-t border-cyan-500/30 flex justify-center items-center">
-                    <a target="_blank" href="https://www.diell.pro" rel="noopener noreferrer">
-                        <DiellLogo size={50} primaryColor="#ffd700" secondaryColor="#ffed4e" />
-                    </a>
-                </div>
+
             </div>
         </aside>
     );
