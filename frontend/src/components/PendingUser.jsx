@@ -16,10 +16,11 @@ const PendingUsers = () => {
     refreshPendingUsers 
   } = useAdminStore();
 
-  const [activeTab, setActiveTab] = useState('pending-users'); // 'pending-users' or 'shift-requests'
-  const [shiftTab, setShiftTab] = useState('pending'); // 'pending', 'approved', 'rejected'
+  const [activeTab, setActiveTab] = useState('pending-users');
+  const [shiftTab, setShiftTab] = useState('pending');
   const [processingId, setProcessingId] = useState(null);
   const [selectedRegions, setSelectedRegions] = useState({});
+  const [selectedShifts, setSelectedShifts] = useState({});
   const [contractDates, setContractDates] = useState({});
 
   const regions = [
@@ -35,6 +36,11 @@ const PendingUsers = () => {
     "Prizren"
   ];
 
+  const shifts = [
+    { value: 1, label: "Paradite (Mëngjes)" },
+    { value: 2, label: "Pasdite" }
+  ];
+
   useEffect(() => {
     getPendingUsers();
     getAllShiftRequests();
@@ -42,14 +48,17 @@ const PendingUsers = () => {
 
   useEffect(() => {
     const initialRegions = {};
+    const initialShifts = {};
     const initialDates = {};
     pendingUsers.forEach(user => {
       initialRegions[user.id] = user.region || "";
+      initialShifts[user.id] = "";
       initialDates[user.id] = {
         startDate: ""
       };
     });
     setSelectedRegions(initialRegions);
+    setSelectedShifts(initialShifts);
     setContractDates(initialDates);
   }, [pendingUsers]);
 
@@ -57,6 +66,13 @@ const PendingUsers = () => {
     setSelectedRegions(prev => ({
       ...prev,
       [userId]: region
+    }));
+  };
+
+  const handleShiftChange = (userId, shift) => {
+    setSelectedShifts(prev => ({
+      ...prev,
+      [userId]: shift
     }));
   };
 
@@ -72,10 +88,16 @@ const PendingUsers = () => {
 
   const handleAcceptUser = async (userId) => {
     const region = selectedRegions[userId];
+    const shift = selectedShifts[userId];
     const dates = contractDates[userId];
     
     if (!region) {
       toast.error("Ju lutem zgjidhni një rajon");
+      return;
+    }
+
+    if (!shift) {
+      toast.error("Ju lutem zgjidhni një turn");
       return;
     }
 
@@ -85,7 +107,7 @@ const PendingUsers = () => {
     }
 
     setProcessingId(userId);
-    const success = await acceptUser(userId, region, dates.startDate);
+    const success = await acceptUser(userId, region, shift, dates.startDate);
     setProcessingId(null);
     
     if (success && pendingUsers.length === 1) {
@@ -287,7 +309,7 @@ const PendingUsers = () => {
                   {/* Region Dropdown */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Rajoni
+                      Rajoni <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={selectedRegions[user.id] || ""}
@@ -303,10 +325,29 @@ const PendingUsers = () => {
                     </select>
                   </div>
 
+                  {/* Shift Dropdown */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Turni <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedShifts[user.id] || ""}
+                      onChange={(e) => handleShiftChange(user.id, e.target.value)}
+                      className="w-full bg-white border border-gray-300 rounded-lg p-2.5 text-gray-700 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    >
+                      <option value="">Zgjedh Turnin</option>
+                      {shifts.map((shift) => (
+                        <option key={shift.value} value={shift.value}>
+                          {shift.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Contract Date */}
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Data e Fillimit të Punes
+                      Data e Fillimit të Punes <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="date"
@@ -322,12 +363,14 @@ const PendingUsers = () => {
                     disabled={
                       processingId === user.id || 
                       !selectedRegions[user.id] ||
+                      !selectedShifts[user.id] ||
                       !contractDates[user.id]?.startDate
                     }
                     className={clsx(
                       "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all",
                       processingId === user.id || 
                       !selectedRegions[user.id] ||
+                      !selectedShifts[user.id] ||
                       !contractDates[user.id]?.startDate 
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                         : "bg-green-500 text-white hover:bg-green-600 hover:shadow-md"

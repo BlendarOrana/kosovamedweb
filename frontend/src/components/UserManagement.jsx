@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useAdminStore } from "../stores/useAdminStore"; // Assuming your store is here
+import { useAdminStore } from "../stores/useAdminStore";
 import { useReportsStore } from "../stores/useReportsStore";
+import { FiUser, FiEdit2, FiKey, FiPlus, FiX, FiCheck, FiSearch, FiExternalLink, FiRefreshCw, FiFileText, FiClock } from "react-icons/fi";
 
-import { FiUser, FiEdit2,  FiKey, FiPlus, FiX, FiCheck, FiSearch, FiExternalLink, FiRefreshCw, FiFileText } from "react-icons/fi";
 const UserManagement = () => {
   const {
     users,
@@ -14,7 +14,7 @@ const UserManagement = () => {
     changeUserPassword,
   } = useAdminStore();
 
-const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = useReportsStore();
+  const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = useReportsStore();
 
   const initialFormData = {
     name: "",
@@ -24,11 +24,11 @@ const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = use
     role: "user",
     active: true,
     region: "",
+    shift: "",
     title: "",
     email: "",
     contract: null,
     license: null,
-    // New fields added
     id_card_number: "",
     address: "",
     contract_start_date: "",
@@ -39,11 +39,15 @@ const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = use
   const [searchTerm, setSearchTerm] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-
   const [currentUserForEdit, setCurrentUserForEdit] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  const shifts = [
+    { value: 1, label: "Paradite (Mëngjes)" },
+    { value: 2, label: "Pasdite" }
+  ];
 
   useEffect(() => {
     if (users.length === 0) {
@@ -81,12 +85,12 @@ const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = use
         role: userData.role || "user",
         active: userData.active,
         region: userData.region || "",
+        shift: userData.shift || "",
         title: userData.title || "",
         password: "",
         confirmPassword: "",
         contract: null,
         license: null,
-        // Populate new fields
         id_card_number: userData.id_card_number || "",
         address: userData.address || "",
         contract_start_date: userData.contract_start_date ? new Date(userData.contract_start_date).toISOString().split('T')[0] : "",
@@ -97,7 +101,7 @@ const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = use
       setIsEditing(true);
       setModalOpen(true);
     } else {
-        console.error("User not found in local state!");
+      console.error("User not found in local state!");
     }
   };
 
@@ -124,22 +128,20 @@ const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = use
 
     const dataToSend = new FormData();
     Object.keys(formData).forEach(key => {
-        // Exclude confirmPassword and only append non-null values
-        if (key !== 'confirmPassword' && formData[key] !== null) {
-          // For date fields, if they are empty, don't send them
-          if ((key === 'contract_start_date' || key === 'contract_end_date') && formData[key] === '') {
-            return;
-          }
-          dataToSend.append(key, formData[key]);
+      if (key !== 'confirmPassword' && formData[key] !== null && formData[key] !== '') {
+        if ((key === 'contract_start_date' || key === 'contract_end_date') && formData[key] === '') {
+          return;
         }
+        dataToSend.append(key, formData[key]);
+      }
     });
 
     const success = isEditing
-        ? await updateUser(selectedUserId, dataToSend)
-        : await createUser(dataToSend);
+      ? await updateUser(selectedUserId, dataToSend)
+      : await createUser(dataToSend);
 
     if (success) {
-        resetFormAndCloseModals();
+      resetFormAndCloseModals();
     }
   };
 
@@ -151,29 +153,40 @@ const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = use
     }
 
     const success = await changeUserPassword(selectedUserId, newPassword);
-    if(success) {
-        resetFormAndCloseModals();
+    if (success) {
+      resetFormAndCloseModals();
     }
   };
 
   const handleDownloadPDF = async (userId) => {
-  try {
-    await downloadContractTerminationPDF(userId);
-  } catch (error) {
-    console.error("Error downloading PDF:", error);
-  }
-};
+    try {
+      await downloadContractTerminationPDF(userId);
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+    }
+  };
 
-const handleDownloadCertificate = async (userId) => {
-  try {
-    await downloadEmploymentCertificatePDF(userId);
-  } catch (error) {
-    console.error("Error downloading certificate:", error);
-  }
-};
-
+  const handleDownloadCertificate = async (userId) => {
+    try {
+      await downloadEmploymentCertificatePDF(userId);
+    } catch (error) {
+      console.error("Error downloading certificate:", error);
+    }
+  };
 
   const getRoleDisplayName = (role) => (role.charAt(0).toUpperCase() + role.slice(1));
+  
+  const getShiftLabel = (shift) => {
+    if (shift === 1) return "Paradite";
+    if (shift === 2) return "Pasdite";
+    return "N/A";
+  };
+
+  const getShiftColor = (shift) => {
+    if (shift === 1) return "bg-orange-500/20 text-orange-400";
+    if (shift === 2) return "bg-blue-500/20 text-blue-400";
+    return "bg-gray-500/20 text-gray-400";
+  };
 
   return (
     <div className="bg-gray-800/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-cyan-500/30">
@@ -216,15 +229,16 @@ const handleDownloadCertificate = async (userId) => {
             <tr className="border-b border-gray-700">
               <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Emri</th>
               <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Roli</th>
+              <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Turni</th>
               <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Statusi</th>
               <th className="py-3 px-4 text-right text-gray-400 uppercase text-xs tracking-wider">Veprimet</th>
             </tr>
           </thead>
           <tbody>
             {loading && users.length === 0 ? (
-              <tr><td colSpan="4" className="py-8 text-center text-gray-400">Duke ngarkuar...</td></tr>
+              <tr><td colSpan="5" className="py-8 text-center text-gray-400">Duke ngarkuar...</td></tr>
             ) : filteredUsers.length === 0 ? (
-              <tr><td colSpan="4" className="py-8 text-center text-gray-400">Asnjë përdorues nuk u gjet</td></tr>
+              <tr><td colSpan="5" className="py-8 text-center text-gray-400">Asnjë përdorues nuk u gjet</td></tr>
             ) : (
               filteredUsers.map((user) => (
                 <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/40">
@@ -240,40 +254,46 @@ const handleDownloadCertificate = async (userId) => {
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 capitalize">{getRoleDisplayName(user.role)}</span>
                   </td>
                   <td className="py-3 px-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit ${getShiftColor(user.shift)}`}>
+                      <FiClock size={12} />
+                      {getShiftLabel(user.shift)}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{user.active ? 'Aktiv' : 'Joaktiv'}</span>
                   </td>
-<td className="py-3 px-4 text-right">
-  <div className="flex justify-end gap-2">
-    <button 
-      onClick={() => handleEditUser(user.id)} 
-      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-cyan-400 transition-colors" 
-      title="Modifiko"
-    >
-      <FiEdit2 size={16} />
-    </button>
-    <button 
-      onClick={() => handlePasswordChange(user.id)} 
-      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-yellow-400 transition-colors" 
-      title="Ndrysho fjalëkalimin"
-    >
-      <FiKey size={16} />
-    </button>
-    <button 
-      onClick={() => handleDownloadPDF(user.id)} 
-      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-green-400 transition-colors" 
-      title="Shkarko PDF të ndërprerjes"
-    >
-      <FiFileText size={16} />
-    </button>
-    <button 
-      onClick={() => handleDownloadCertificate(user.id)} 
-      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-blue-400 transition-colors" 
-      title="Shkarko vërtetimin e punësimit"
-    >
-      <FiFileText size={16} />
-    </button>
-  </div>
-</td>
+                  <td className="py-3 px-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button 
+                        onClick={() => handleEditUser(user.id)} 
+                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-cyan-400 transition-colors" 
+                        title="Modifiko"
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handlePasswordChange(user.id)} 
+                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-yellow-400 transition-colors" 
+                        title="Ndrysho fjalëkalimin"
+                      >
+                        <FiKey size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDownloadPDF(user.id)} 
+                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-green-400 transition-colors" 
+                        title="Shkarko PDF të ndërprerjes"
+                      >
+                        <FiFileText size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDownloadCertificate(user.id)} 
+                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-blue-400 transition-colors" 
+                        title="Shkarko vërtetimin e punësimit"
+                      >
+                        <FiFileText size={16} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
@@ -355,7 +375,18 @@ const handleDownloadCertificate = async (userId) => {
                         <option value="Mitrovicë">Mitrovicë</option>
                         <option value="Prizren">Prizren</option>
                       </select>
-                     </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Turni</label>
+                      <select name="shift" value={formData.shift} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">
+                        <option value="">Zgjedh Turnin</option>
+                        {shifts.map((shift) => (
+                          <option key={shift.value} value={shift.value}>
+                            {shift.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-1">Roli</label>
                       <select name="role" value={formData.role} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">
@@ -364,7 +395,7 @@ const handleDownloadCertificate = async (userId) => {
                         <option value="admin">Admin</option>
                       </select>
                     </div>
-                    <div className="flex items-center pt-2 md:col-span-2">
+                    <div className="flex items-center pt-2">
                       <input id="active" name="active" type="checkbox" checked={formData.active} onChange={handleChange} className="w-4 h-4 text-cyan-500 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500"/>
                       <label htmlFor="active" className="ml-2 text-sm font-medium text-gray-300">Llogaria aktive</label>
                     </div>
@@ -374,14 +405,14 @@ const handleDownloadCertificate = async (userId) => {
                 {/* Documents Section */}
                 <div>
                   <h3 className="text-lg font-semibold text-cyan-400 my-4 border-b border-gray-700 pb-2">Dokumentet</h3>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Data e Fillimit të Punes</label>
-                        <input type="date" name="contract_start_date" value={formData.contract_start_date} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Data e Fillimit të Punes</label>
+                      <input type="date" name="contract_start_date" value={formData.contract_start_date} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
                     </div>
-                     <div>
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Data e Mbarimit të Punes</label>
-                        <input type="date" name="contract_end_date" value={formData.contract_end_date} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">Data e Mbarimit të Punes</label>
+                      <input type="date" name="contract_end_date" value={formData.contract_end_date} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
                     </div>
                     {isEditing && currentUserForEdit?.contract_url && (
                       <div className="md:col-span-2">
@@ -397,29 +428,29 @@ const handleDownloadCertificate = async (userId) => {
                       <input id="contract" name="contract" type="file" accept=".pdf,.doc,.docx" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
                     </div>
                     {isEditing && currentUserForEdit?.license_url && (
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-300 mb-1">Licensa Aktuale</label>
-                            <a href={currentUserForEdit.license_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 hover:underline">
-                                <FiExternalLink />
-                                <span>Shiko Licensën</span>
-                            </a>
-                        </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-300 mb-1">Licensa Aktuale</label>
+                        <a href={currentUserForEdit.license_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 hover:underline">
+                          <FiExternalLink />
+                          <span>Shiko Licensën</span>
+                        </a>
+                      </div>
                     )}
                     <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-300 mb-1">{isEditing ? "Ngarko Licensë të Re (Opsionale)" : "Ngarko Licensën (Opsionale)"}</label>
-                        <input id="license" name="license" type="file" accept=".pdf,.doc,.docx" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">{isEditing ? "Ngarko Licensë të Re (Opsionale)" : "Ngarko Licensën (Opsionale)"}</label>
+                      <input id="license" name="license" type="file" accept=".pdf,.doc,.docx" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
                     </div>
-                   </div>
+                  </div>
                 </div>
               </form>
             </div>
             
             <div className="p-6 border-t border-gray-700 flex justify-end gap-4">
-                <button type="button" onClick={resetFormAndCloseModals} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors">Anulo</button>
-                <button type="submit" form="user-form" className="px-4 py-2 bg-cyan-500 text-white font-bold rounded-lg hover:bg-cyan-600 transition-colors flex items-center gap-2" disabled={loading}>
-                    <FiCheck />
-                    {isEditing ? "Përditëso" : "Krijo"}
-                </button>
+              <button type="button" onClick={resetFormAndCloseModals} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors">Anulo</button>
+              <button type="submit" form="user-form" className="px-4 py-2 bg-cyan-500 text-white font-bold rounded-lg hover:bg-cyan-600 transition-colors flex items-center gap-2" disabled={loading}>
+                <FiCheck />
+                {isEditing ? "Përditëso" : "Krijo"}
+              </button>
             </div>
           </div>
         </div>
@@ -427,25 +458,25 @@ const handleDownloadCertificate = async (userId) => {
 
       {/* --- Password Modal --- */}
       {passwordModalOpen && (
-         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4">
           <div className="bg-gray-800 rounded-lg max-w-md w-full border border-cyan-500/30 shadow-xl">
             <div className="flex justify-between items-center p-6 border-b border-gray-700">
               <h2 className="text-xl font-bold text-white">Ndrysho Fjalëkalimin</h2>
               <button onClick={() => setPasswordModalOpen(false)} className="text-gray-400 hover:text-white"><FiX size={24} /></button>
             </div>
             <form onSubmit={handlePasswordSubmit}>
-                <div className="p-6">
-                    <label className="block text-sm font-medium text-gray-300 mb-1">Fjalëkalimi i Ri*</label>
-                    <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
-                </div>
-                <div className="p-6 border-t border-gray-700 flex justify-end gap-4">
-                  <button type="button" onClick={() => setPasswordModalOpen(false)} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors">Anulo</button>
-                  <button type="submit" className="px-4 py-2 bg-cyan-500 text-white font-bold rounded-lg hover:bg-cyan-600 transition-colors flex items-center gap-2" disabled={loading}>
-                    <FiKey size={16} />
-                    Ndrysho Fjalëkalimin
-                  </button>
-                </div>
-              </form>
+              <div className="p-6">
+                <label className="block text-sm font-medium text-gray-300 mb-1">Fjalëkalimi i Ri*</label>
+                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
+              </div>
+              <div className="p-6 border-t border-gray-700 flex justify-end gap-4">
+                <button type="button" onClick={() => setPasswordModalOpen(false)} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors">Anulo</button>
+                <button type="submit" className="px-4 py-2 bg-cyan-500 text-white font-bold rounded-lg hover:bg-cyan-600 transition-colors flex items-center gap-2" disabled={loading}>
+                  <FiKey size={16} />
+                  Ndrysho Fjalëkalimin
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
