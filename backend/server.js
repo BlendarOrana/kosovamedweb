@@ -173,7 +173,7 @@ app.get('/*', (req, res) => {
 
 // --- ERROR HANDLING ---
 // 404 handler for API routes - EXPRESS 5 COMPATIBLE
-app.use('/api/*splat', (req, res) => {
+app.use('/api/*', (req, res) => { // CORRECTED LINE
   res.status(404).json({ error: "API route not found." });
 });
 
