@@ -165,17 +165,16 @@ app.get('/health', (req, res) => {
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/dist")));
 
-  app.get('*', (req, res) => {  // Changed from '/*' to '*'
+  app.get(/.*/, (req, res) => {  // Use regex instead of '*'
     res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
   });
 }
-
 // --- ERROR HANDLING ---
 // 404 handler for API routes - EXPRESS 5 COMPATIBLE
-app.use('/api*', (req, res) => {
-     res.status(404).json({ error: "API route not found." });
-   });
-
+// 404 handler for API routes
+app.use(/^\/api\/.*/, (req, res) => {  // Use regex
+  res.status(404).json({ error: "API route not found." });
+});
 // Generic error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
