@@ -2,7 +2,8 @@ import express from 'express';
 import { 
   checkIn,
   checkOut,
-  getMyAttendance,
+    getTodayStatus,
+
   getAllAttendance,
   markVacationAsSeen,
 markAllVacationsAsSeen
@@ -18,8 +19,7 @@ const router = express.Router();
 // User routes
 router.post('/check-in', protectRoute, checkIn);
 router.post('/check-out', protectRoute, checkOut);
-router.get('/my-attendance', protectRoute, getMyAttendance);
-
+router.get('/today-status', protectRoute, getTodayStatus);
 
 // Add these routes to your existing router file
 

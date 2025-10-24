@@ -53,32 +53,34 @@ export const checkOut = async (req, res) => {
   }
 };
 
-// Get user's attendance history (No changes needed)
-export const getMyAttendance = async (req, res) => {
+// Add this new controller
+export const getTodayStatus = async (req, res) => {
   const userId = req.user.id;
-  const { startDate, endDate, limit = 50 } = req.query;
   try {
-    let query = `
-      SELECT id, check_in_time, check_out_time, 
-             EXTRACT(EPOCH FROM (check_out_time - check_in_time))/3600 as hours_worked
+    const today = new Date().toISOString().split('T')[0];
+    
+    const result = await promisePool.query(`
+      SELECT id, check_in_time, check_out_time
       FROM attendance 
-      WHERE user_id = $1
-    `;
-    const params = [userId];
-    if (startDate) {
-      params.push(startDate);
-      query += ` AND DATE(check_in_time) >= $${params.length}`;
+      WHERE user_id = $1 AND DATE(check_in_time) = $2
+      ORDER BY check_in_time DESC
+      LIMIT 1
+    `, [userId, today]);
+    
+    if (result.rows.length === 0) {
+      return res.json({ 
+        status: 'checked-out', 
+        record: null 
+      });
     }
-    if (endDate) {
-      params.push(endDate);
-      query += ` AND DATE(check_in_time) <= $${params.length}`;
-    }
-    query += ` ORDER BY check_in_time DESC LIMIT $${params.length + 1}`;
-    params.push(limit);
-    const result = await promisePool.query(query, params);
-    res.json(result.rows);
+    
+    const record = result.rows[0];
+    res.json({
+      status: record.check_out_time ? 'checked-out' : 'checked-in',
+      record: record
+    });
   } catch (error) {
-    console.error("Error fetching attendance:", error);
+    console.error("Error fetching today's status:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
