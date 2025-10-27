@@ -139,10 +139,13 @@ export const generateVacationReport = async (req, res) => {
         v.end_date - v.start_date + 1 as days_requested,
         v.status,
         TO_CHAR(v.requested_at, 'YYYY-MM-DD HH24:MI') as requested_at,
-        r.name as reviewed_by
+        r.name as reviewed_by,
+        rep.name as replacement_user_name,
+        v.replacement_status
       FROM vacations v
       JOIN users u ON v.user_id = u.id
       LEFT JOIN users r ON v.reviewed_by = r.id
+      LEFT JOIN users rep ON v.replacement_user_id = rep.id
       WHERE 1=1
     `;
     const params = [];
@@ -164,7 +167,6 @@ export const generateVacationReport = async (req, res) => {
       query += ` AND u.title = $${params.length}`;
     }
 
-
     query += ` ORDER BY v.requested_at DESC`;
 
     const result = await promisePool.query(query, params);
@@ -177,7 +179,7 @@ export const generateVacationReport = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Vacation Report');
 
-    // Define columns
+    // Define columns - added replacement columns
     worksheet.columns = [
       { header: 'Employee Name', key: 'employee_name', width: 20 },
       { header: 'Employee Number', key: 'employee_number', width: 15 },
@@ -186,7 +188,9 @@ export const generateVacationReport = async (req, res) => {
       { header: 'Start Date', key: 'start_date', width: 12 },
       { header: 'End Date', key: 'end_date', width: 12 },
       { header: 'Days Requested', key: 'days_requested', width: 15 },
-      { header: 'Status', key: 'status', width: 10 },
+      { header: 'Status', key: 'status', width: 25 },
+      { header: 'Replacement User', key: 'replacement_user_name', width: 20 },
+      { header: 'Replacement Status', key: 'replacement_status', width: 20 },
       { header: 'Requested At', key: 'requested_at', width: 18 },
       { header: 'Reviewed By', key: 'reviewed_by', width: 20 }
     ];
@@ -199,28 +203,38 @@ export const generateVacationReport = async (req, res) => {
       fgColor: { argb: 'FFE6E6FA' }
     };
 
+    // Helper function to format status for display
+    const formatStatus = (status) => {
+      if (!status) return 'N/A';
+      return status
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    };
+
     // Add data rows
-result.rows.forEach(row => {
-  const startDate = new Date(row.start_date);
-  const endDate = new Date(row.end_date);
-  
-  startDate.setHours(startDate.getHours() + 24);
-  endDate.setHours(endDate.getHours() + 24);
+    result.rows.forEach(row => {
+      const startDate = new Date(row.start_date);
+      const endDate = new Date(row.end_date);
+      
+      startDate.setHours(startDate.getHours() + 24);
+      endDate.setHours(endDate.getHours() + 24);
 
-  const addedRow = worksheet.addRow({
-    employee_name: row.employee_name,
-    employee_number: row.employee_number || 'N/A',
-    region: row.region || 'N/A',
-    title: row.title || 'N/A',
-    start_date: startDate.toISOString().split('T')[0],
-    end_date: endDate.toISOString().split('T')[0],
-    days_requested: row.days_requested,
-    status: row.status.charAt(0).toUpperCase() + row.status.slice(1),
-    requested_at: row.requested_at,
-    reviewed_by: row.reviewed_by || 'Pending'
-  });
-});
-
+      const addedRow = worksheet.addRow({
+        employee_name: row.employee_name,
+        employee_number: row.employee_number || 'N/A',
+        region: row.region || 'N/A',
+        title: row.title || 'N/A',
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0],
+        days_requested: row.days_requested,
+        status: formatStatus(row.status),
+        replacement_user_name: row.replacement_user_name || 'N/A',
+        replacement_status: formatStatus(row.replacement_status),
+        requested_at: row.requested_at,
+        reviewed_by: row.reviewed_by || 'Pending'
+      });
+    });
 
     // Generate buffer
     const buffer = await workbook.xlsx.writeBuffer();
