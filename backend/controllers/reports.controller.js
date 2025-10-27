@@ -20,13 +20,10 @@ export const generateAttendanceReport = async (req, res) => {
         u.number,
         u.region,
         u.title,
+        u.shift,
         DATE(a.check_in_time AT TIME ZONE 'Europe/Belgrade') as date,
         TO_CHAR(a.check_in_time AT TIME ZONE 'Europe/Belgrade', 'HH24:MI:SS') as check_in,
-        TO_CHAR(a.check_out_time AT TIME ZONE 'Europe/Belgrade', 'HH24:MI:SS') as check_out,
-        CASE 
-          WHEN a.check_out_time IS NULL THEN 'Not Checked Out'
-          ELSE TO_CHAR(a.check_out_time - a.check_in_time, 'HH24:MI')
-        END as total_hours
+        TO_CHAR(a.check_out_time AT TIME ZONE 'Europe/Belgrade', 'HH24:MI:SS') as check_out
       FROM attendance a
       JOIN users u ON a.user_id = u.id
       WHERE 1=1
@@ -67,16 +64,16 @@ export const generateAttendanceReport = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Attendance Report');
 
-    // Define columns
+    // Define columns - removed Total Hours column
     worksheet.columns = [
       { header: 'Employee Name', key: 'name', width: 20 },
       { header: 'Employee Number', key: 'number', width: 15 },
       { header: 'Region', key: 'region', width: 15 },
       { header: 'Title', key: 'title', width: 20 },
+      { header: 'Shift', key: 'shift', width: 12 },
       { header: 'Date', key: 'date', width: 12 },
       { header: 'Check In', key: 'check_in', width: 10 },
-      { header: 'Check Out', key: 'check_out', width: 10 },
-      { header: 'Total Hours', key: 'total_hours', width: 12 }
+      { header: 'Check Out', key: 'check_out', width: 10 }
     ];
 
     // Style the header row
@@ -89,15 +86,23 @@ export const generateAttendanceReport = async (req, res) => {
 
     // Add data rows
     result.rows.forEach(row => {
+      // Convert shift number to text
+      let shiftText = 'N/A';
+      if (row.shift === 1) {
+        shiftText = 'Paradite';
+      } else if (row.shift === 2) {
+        shiftText = 'Pasdite';
+      }
+
       worksheet.addRow({
         name: row.name,
         number: row.number || 'N/A',
         region: row.region || 'N/A',
         title: row.title || 'N/A',
+        shift: shiftText,
         date: row.date,
         check_in: row.check_in,
-        check_out: row.check_out || 'Not Checked Out',
-        total_hours: row.total_hours
+        check_out: row.check_out || 'Not Checked Out'
       });
     });
 

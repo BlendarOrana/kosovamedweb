@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAdminStore } from "../stores/useAdminStore";
 import { useReportsStore } from "../stores/useReportsStore";
 import { FiUser, FiEdit2, FiKey, FiPlus, FiX, FiCheck, FiSearch, FiExternalLink, FiRefreshCw, FiFileText, FiClock } from "react-icons/fi";
+import { useUserStore } from "../stores/useUserStore";
 
 const UserManagement = () => {
   const {
@@ -15,6 +16,8 @@ const UserManagement = () => {
   } = useAdminStore();
 
   const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = useReportsStore();
+    const { user: currentUser } = useUserStore(); // Add this line
+
 
   const initialFormData = {
     name: "",
@@ -262,38 +265,44 @@ const UserManagement = () => {
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{user.active ? 'Aktiv' : 'Joaktiv'}</span>
                   </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button 
-                        onClick={() => handleEditUser(user.id)} 
-                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-cyan-400 transition-colors" 
-                        title="Modifiko"
-                      >
-                        <FiEdit2 size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handlePasswordChange(user.id)} 
-                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-yellow-400 transition-colors" 
-                        title="Ndrysho fjalëkalimin"
-                      >
-                        <FiKey size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleDownloadPDF(user.id)} 
-                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-green-400 transition-colors" 
-                        title="Shkarko PDF të ndërprerjes"
-                      >
-                        <FiFileText size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleDownloadCertificate(user.id)} 
-                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-blue-400 transition-colors" 
-                        title="Shkarko vërtetimin e punësimit"
-                      >
-                        <FiFileText size={16} />
-                      </button>
-                    </div>
-                  </td>
+             <td className="py-3 px-4 text-right">
+  <div className="flex justify-end gap-2">
+    <button 
+      onClick={() => handleEditUser(user.id)} 
+      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-cyan-400 transition-colors" 
+      title="Modifiko"
+    >
+      <FiEdit2 size={16} />
+    </button>
+       <button 
+          onClick={() => handlePasswordChange(user.id)} 
+          className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-yellow-400 transition-colors" 
+          title="Ndrysho fjalëkalimin"
+        >
+          <FiKey size={16} />
+        </button>
+    
+    {currentUser?.role === 'admin' && (
+      <>
+     
+        <button 
+          onClick={() => handleDownloadPDF(user.id)} 
+          className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-green-400 transition-colors" 
+          title="Shkarko PDF të ndërprerjes"
+        >
+          <FiFileText size={16} />
+        </button>
+        <button 
+          onClick={() => handleDownloadCertificate(user.id)} 
+          className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-blue-400 transition-colors" 
+          title="Shkarko vërtetimin e punësimit"
+        >
+          <FiFileText size={16} />
+        </button>
+      </>
+    )}
+  </div>
+</td>
                 </tr>
               ))
             )}
@@ -301,7 +310,6 @@ const UserManagement = () => {
         </table>
       </div>
 
-      {/* --- ADD/EDIT MODAL --- */}
       {modalOpen && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
           <div className="bg-gray-800 rounded-lg max-w-3xl w-full border border-cyan-500/30 shadow-xl flex flex-col max-h-[90vh]">

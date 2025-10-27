@@ -24,7 +24,8 @@ export const sqlInjectionProtection = (req, res, next) => {
 
     const checkObject = (obj) => {
       for (const key in obj) {
-        if (obj.hasOwnProperty(key)) {
+        // Fix: Use Object.hasOwn instead of obj.hasOwnProperty
+        if (Object.hasOwn(obj, key)) {
           if (typeof obj[key] === 'object' && obj[key] !== null) {
             if (checkObject(obj[key])) return true;
           } else if (checkValue(obj[key]) || checkValue(key)) {
@@ -61,7 +62,8 @@ export const sanitizeForPostgres = (input) => {
   } else if (typeof input === 'object' && input !== null) {
     const sanitized = {};
     for (const key in input) {
-      if (input.hasOwnProperty(key)) {
+      // Fix: Use Object.hasOwn instead of input.hasOwnProperty
+      if (Object.hasOwn(input, key)) {
         sanitized[key] = sanitizeForPostgres(input[key]);
       }
     }

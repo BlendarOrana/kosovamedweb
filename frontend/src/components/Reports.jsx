@@ -182,7 +182,6 @@ const Reports = () => {
     {
       id: 'attendance', 
       title: 'Raporti i Pjesëmarrjes', 
-      description: 'Ndiqni hyrjet, daljet dhe orët e punës.',
       icon: FiClock, 
       initialFilters: { startDate: '', endDate: '', username: '', region: '', title: '' },
       onDownload: downloadAttendanceReport,
@@ -196,8 +195,7 @@ const Reports = () => {
     },
     {
       id: 'vacation', 
-      title: 'Raporti i Lejeve', 
-      description: 'Eksportoni statusin e kërkesave për leje të punonjësve.',
+      title: 'Raporti i Pushimeve', 
       icon: FiCalendar, 
       initialFilters: { status: '', username: '', region: '', title: '' },
       onDownload: downloadVacationReport,
