@@ -14,19 +14,14 @@ import adminRoutes from "./routes/admin.route.js";
 import reportsRoutes from './routes/reports.route.js';
 import attendanceRoutes from './routes/attendance.route.js';
 import notificationRoutes from './routes/notification.route.js';
-import userRoutes from './routes/user.route.js'; // Import the new user route
+import userRoutes from './routes/user.route.js';
 import csrf from 'csurf';
 
-
-
 import { testS3Connection } from "./lib/s3.js";
-
 import { connectDB } from "./lib/db.js";
 import { sqlInjectionProtection } from './lib/security/postgres.security.js';
 
 dotenv.config();
-
-
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -83,17 +78,16 @@ app.use(helmet({
       childSrc: ["'self'", "blob:"]
     },
   },
-    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   permittedCrossDomainPolicies: { policy: 'none' },
   dnsPrefetchControl: { allow: false },
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-
 // 2. Rate Limiting
 const apiLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 15 minutes
+  windowMs: 10 * 60 * 1000,
   max: 150, 
   message: { error: "Too many requests from this IP, please try again after 15 minutes." },
   standardHeaders: true,
@@ -101,33 +95,21 @@ const apiLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15, // Stricter limit for authentication routes
+  windowMs: 15 * 60 * 1000,
+  max: 15,
   message: { error: "Too many authentication attempts, please try again after 15 minutes." },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Apply general rate limiting to all API routes
-
-// 3. Body Parsers (keeping your original 10mb limit for file uploads)
+// 3. Body Parsers
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // 4. Cookie Parser
 app.use(cookieParser());
 
-const csrfProtection = csrf({ 
-  cookie: {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict'
-  }
-});
-
-app.use('/api/', apiLimiter,csrfProtection);
-
-
+// 5. CORS - Must come before CSRF
 app.use(cors({
   origin: (origin, callback) => {
     if (process.env.NODE_ENV !== "production") {
@@ -148,7 +130,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'CSRF-Token'], // Add CSRF-Token here
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'CSRF-Token', 'X-Client-Type'],
 }));
 
 // 6. HTTP Parameter Pollution protection
@@ -160,58 +142,62 @@ app.use(compression());
 // 8. SQL Injection Protection
 app.use(sqlInjectionProtection);
 
-// --- API ROUTES ---
-// Auth routes with stricter rate limiting
-app.use("/api/auth", authLimiter, authRoutes);
+// 9. Conditional CSRF Protection (only for web clients)
+const csrfProtection = csrf({ 
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  }
+});
 
-// Admin routes
+// Middleware to conditionally apply CSRF protection
+const conditionalCsrfProtection = (req, res, next) => {
+  // Check if request is from mobile app
+  const clientType = req.headers['x-client-type'];
+  
+  // Skip CSRF for mobile apps
+  if (clientType === 'mobile' || clientType === 'react-native') {
+    return next();
+  }
+  
+  // Apply CSRF protection for web clients
+  csrfProtection(req, res, next);
+};
+
+// CSRF token endpoint (only for web clients)
+app.get('/api/csrf-token', conditionalCsrfProtection, (req, res) => {
+  res.json({ csrfToken: req.csrfToken?.() || null });
+});
+
+// Apply rate limiting and conditional CSRF to API routes
+app.use('/api/', apiLimiter, conditionalCsrfProtection);
+
+// --- API ROUTES ---
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/users', userRoutes); // Use the new user routes for push token
+app.use('/api/users', userRoutes);
 
 // Health check endpoint
-app.get('/health', async (req, res) => {
-  try {
-    // Check DB
-    await pool.query('SELECT 1');
-    
-    // Check S3
-    const s3Ok = await testS3Connection();
-    
-    res.status(200).json({ 
-      status: 'OK',
-      database: 'connected',
-      s3: s3Ok ? 'connected' : 'disconnected'
-    });
-  } catch (error) {
-    res.status(503).json({ 
-      status: 'ERROR',
-      error: 'Service unavailable' 
-    });
-  }
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK' });
 });
-
-app.get('/api/csrf-token', (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
-});
-
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/dist")));
-
-  app.get(/.*/, (req, res) => {  // Use regex instead of '*'
+  app.get(/.*/, (req, res) => {
     res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
   });
 }
+
 // --- ERROR HANDLING ---
-// 404 handler for API routes - EXPRESS 5 COMPATIBLE
-// 404 handler for API routes
-app.use(/^\/api\/.*/, (req, res) => {  // Use regex
+app.use(/^\/api\/.*/, (req, res) => {
   res.status(404).json({ error: "API route not found." });
 });
-// Generic error handler
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   const statusCode = err.statusCode || 500;
