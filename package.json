@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "backend/server.js",
   "engines": {
-  "node": "22.x"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "nodemon backend/server.js",
@@ -22,6 +22,7 @@
     "compression": "^1.8.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "csurf": "^1.11.0",
     "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
     "expo-server-sdk": "^4.0.0",

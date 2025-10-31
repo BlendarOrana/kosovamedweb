@@ -4,6 +4,67 @@ import { FiCheckCircle, FiXCircle, FiAlertCircle, FiUser } from 'react-icons/fi'
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 
+// Official holidays in Kosovo for 2025
+const KOSOVO_HOLIDAYS_2025 = [
+  '2025-01-01', // New Year's Day
+  '2025-01-02', // New Year's Holiday (Second Day)
+  '2025-01-07', // Orthodox Christmas
+  '2025-02-17', // Independence Day of Kosovo
+  '2025-04-09', // Constitution Day of Kosovo
+  '2025-04-21', // Orthodox Easter (observed) & Catholic Easter (observed)
+  '2025-05-01', // International Workers' Day
+  '2025-05-09', // Europe Day
+  '2025-03-31', // Eid al-Fitr (observed)
+  '2025-06-06', // Eid al-Adha
+  '2025-12-25', // Catholic Christmas
+];
+
+// Helper function to check if a date is a weekend
+const isWeekend = (date) => {
+  const day = date.getUTCDay();
+  return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
+};
+
+// Helper function to check if a date is a holiday
+const isHoliday = (date) => {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
+  return KOSOVO_HOLIDAYS_2025.includes(dateStr);
+};
+
+// Calculate working days between two dates (excluding weekends and holidays)
+const calculateWorkingDays = (startDate, endDate) => {
+  if (!startDate || !endDate) return 0;
+  
+  // Parse UTC dates and convert to local date (ignoring time)
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Check for invalid dates
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+  
+  // Use UTC methods to avoid timezone issues
+  const startDay = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  const endDay = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
+  
+  if (startDay > endDay) return 0;
+  
+  let workingDays = 0;
+  const currentDate = new Date(startDay);
+  
+  while (currentDate <= endDay) {
+    if (!isWeekend(currentDate) && !isHoliday(currentDate)) {
+      workingDays++;
+    }
+    // Move to next day using UTC
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+  }
+  
+  return workingDays;
+};
+
 const VacationManagement = () => {
   const { 
     vacations, 
@@ -151,6 +212,9 @@ const VacationManagement = () => {
                   Datat
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Ditë Pune
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   Menaxheri
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -164,41 +228,57 @@ const VacationManagement = () => {
               </tr>
             </thead>
             <tbody className="bg-gray-900/50 divide-y divide-gray-700">
-              {filteredVacations.map((req) => (
-                <tr key={req.id} className="hover:bg-gray-700/40 transition-colors duration-200">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                    {req.employee_name }
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    {new Date(req.start_date).toLocaleDateString()} - {new Date(req.end_date).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    <div className="flex items-center gap-1.5">
-                      <FiUser size={14} className="text-gray-500" />
-                      {req.manager_name || 'N/A'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <StatusBadge status={req.status} />
-                  </td>
-                  {activeTab === 'pending' && (
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button 
-                        onClick={() => openModal(req, 'approved')} 
-                        className="text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-md font-semibold text-xs transition-colors duration-200"
-                      >
-                        Aprovo
-                      </button>
-                      <button 
-                        onClick={() => openModal(req, 'rejected')} 
-                        className="text-white bg-red-500 hover:bg-red-600 px-3 py-4.5 rounded-md font-semibold text-xs transition-colors duration-200"
-                      >
-                        Refuzo
-                      </button>
+              {filteredVacations.map((req) => {
+                const workingDays = calculateWorkingDays(req.start_date, req.end_date);
+                
+                // Debug logging
+                console.log('Request:', {
+                  id: req.id,
+                  employee: req.employee_name,
+                  start: req.start_date,
+                  end: req.end_date,
+                  workingDays: workingDays
+                });
+                
+                return (
+                  <tr key={req.id} className="hover:bg-gray-700/40 transition-colors duration-200">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
+                      {req.employee_name}
                     </td>
-                  )}
-                </tr>
-              ))}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {new Date(req.start_date).toLocaleDateString()} - {new Date(req.end_date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-white font-semibold">
+                      {workingDays} {workingDays === 1 ? 'ditë' : 'ditë'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      <div className="flex items-center gap-1.5">
+                        <FiUser size={14} className="text-gray-500" />
+                        {req.manager_name || 'N/A'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <StatusBadge status={req.status} />
+                    </td>
+                    {activeTab === 'pending' && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button 
+                          onClick={() => openModal(req, 'approved')} 
+                          className="text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-md font-semibold text-xs transition-colors duration-200"
+                        >
+                          Aprovo
+                        </button>
+                        <button 
+                          onClick={() => openModal(req, 'rejected')} 
+                          className="text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-md font-semibold text-xs transition-colors duration-200"
+                        >
+                          Refuzo
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -225,7 +305,7 @@ const VacationManagement = () => {
                 {selectedRequest.action === 'approved' ? 'Konfirmo Aprovimin' : 'Konfirmo Refuzimin'}
               </h2>
               <p className="mt-2 text-sm text-gray-300">
-                Jeni i sigurt që doni të {selectedRequest.action === 'approved' ? 'aprovoni' : 'refuzoni'} kërkesën e pushimit për <strong>{selectedRequest.user_name}</strong>?
+                Jeni i sigurt që doni të {selectedRequest.action === 'approved' ? 'aprovoni' : 'refuzoni'} kërkesën e pushimit për <strong>{selectedRequest.employee_name}</strong>?
               </p>
               
               {selectedRequest.action === 'rejected' && (
