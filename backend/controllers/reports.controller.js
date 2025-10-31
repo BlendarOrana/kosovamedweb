@@ -123,6 +123,50 @@ export const generateAttendanceReport = async (req, res) => {
 };
 
 
+// Kosovo Public Holidays for 2025
+const kosovoHolidays2025 = [
+  '2025-01-01', // New Year's Day
+  '2025-01-02', // New Year's Holiday (Second Day)
+  '2025-01-07', // Orthodox Christmas
+  '2025-02-17', // Independence Day
+  '2025-03-31', // Eid al-Fitr (observed)
+  '2025-04-09', // Constitution Day
+  '2025-04-21', // Orthodox Easter (observed)
+  '2025-04-21', // Catholic Easter (observed)
+  '2025-05-01', // International Workers' Day
+  '2025-05-09', // Europe Day
+  '2025-06-06', // Eid al-Adha
+  '2025-12-25', // Catholic Christmas
+];
+
+// Helper function to check if a date is a weekend
+const isWeekend = (date) => {
+  const day = date.getDay();
+  return day === 0 || day === 6; // Sunday = 0, Saturday = 6
+};
+
+// Helper function to check if a date is a holiday
+const isHoliday = (date) => {
+  const dateString = date.toISOString().split('T')[0];
+  return kosovoHolidays2025.includes(dateString);
+};
+
+// Calculate business days between two dates (excluding weekends and holidays)
+const calculateBusinessDays = (startDate, endDate) => {
+  let count = 0;
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+
+  while (current <= end) {
+    if (!isWeekend(current) && !isHoliday(current)) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+
+  return count;
+};
+
 export const generateVacationReport = async (req, res) => {
   // Destructure all possible query parameters
   const { status, username, region, title } = req.query;
@@ -136,7 +180,6 @@ export const generateVacationReport = async (req, res) => {
         u.title,
         v.start_date,
         v.end_date,
-        v.end_date - v.start_date + 1 as days_requested,
         v.status,
         TO_CHAR(v.requested_at, 'YYYY-MM-DD HH24:MI') as requested_at,
         r.name as reviewed_by,
@@ -179,7 +222,7 @@ export const generateVacationReport = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Vacation Report');
 
-    // Define columns - added replacement columns
+    // Define columns
     worksheet.columns = [
       { header: 'Employee Name', key: 'employee_name', width: 20 },
       { header: 'Employee Number', key: 'employee_number', width: 15 },
@@ -187,7 +230,7 @@ export const generateVacationReport = async (req, res) => {
       { header: 'Title', key: 'title', width: 20 },
       { header: 'Start Date', key: 'start_date', width: 12 },
       { header: 'End Date', key: 'end_date', width: 12 },
-      { header: 'Days Requested', key: 'days_requested', width: 15 },
+      { header: 'Business Days', key: 'business_days', width: 15 },
       { header: 'Status', key: 'status', width: 25 },
       { header: 'Replacement User', key: 'replacement_user_name', width: 20 },
       { header: 'Replacement Status', key: 'replacement_status', width: 20 },
@@ -220,6 +263,9 @@ export const generateVacationReport = async (req, res) => {
       startDate.setHours(startDate.getHours() + 24);
       endDate.setHours(endDate.getHours() + 24);
 
+      // Calculate business days (excluding weekends and holidays)
+      const businessDays = calculateBusinessDays(startDate, endDate);
+
       const addedRow = worksheet.addRow({
         employee_name: row.employee_name,
         employee_number: row.employee_number || 'N/A',
@@ -227,7 +273,7 @@ export const generateVacationReport = async (req, res) => {
         title: row.title || 'N/A',
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate.toISOString().split('T')[0],
-        days_requested: row.days_requested,
+        business_days: businessDays,
         status: formatStatus(row.status),
         replacement_user_name: row.replacement_user_name || 'N/A',
         replacement_status: formatStatus(row.replacement_status),
@@ -252,7 +298,8 @@ export const generateVacationReport = async (req, res) => {
   }
 };
 
-
+// Export helper functions for use in other parts of your application
+export { isWeekend, isHoliday, calculateBusinessDays, kosovoHolidays2025 };
 
 export const generateContractTerminationPDF = async (req, res) => {
   const { userId } = req.query;

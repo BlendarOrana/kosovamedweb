@@ -15,6 +15,8 @@ import reportsRoutes from './routes/reports.route.js';
 import attendanceRoutes from './routes/attendance.route.js';
 import notificationRoutes from './routes/notification.route.js';
 import userRoutes from './routes/user.route.js'; // Import the new user route
+import csrf from 'csurf';
+
 
 
 import { testS3Connection } from "./lib/s3.js";
@@ -47,7 +49,6 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: [
         "'self'",
-        "'unsafe-inline'",
         process.env.NODE_ENV === "production" ? undefined : "'unsafe-eval'"
       ].filter(Boolean),
       imgSrc: [
@@ -82,6 +83,9 @@ app.use(helmet({
       childSrc: ["'self'", "blob:"]
     },
   },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  permittedCrossDomainPolicies: { policy: 'none' },
+  dnsPrefetchControl: { allow: false },
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
@@ -105,7 +109,6 @@ const authLimiter = rateLimit({
 });
 
 // Apply general rate limiting to all API routes
-app.use('/api/', apiLimiter);
 
 // 3. Body Parsers (keeping your original 10mb limit for file uploads)
 app.use(express.json({ limit: "10mb" }));
@@ -114,16 +117,27 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // 4. Cookie Parser
 app.use(cookieParser());
 
+const csrfProtection = csrf({ 
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  }
+});
+
+app.use('/api/', apiLimiter,csrfProtection);
+
+
 app.use(cors({
   origin: (origin, callback) => {
     if (process.env.NODE_ENV !== "production") {
       callback(null, true);
     } else {
-const allowedOrigins = [
-  'https://www.kosovamed-app.com',
-  'https://kosovamed-app.com',
-  'https://kosovamedweb.onrender.com/',
-];    
+      const allowedOrigins = [
+        'https://www.kosovamed-app.com',
+        'https://kosovamed-app.com',
+        'https://kosovamedweb.onrender.com/',
+      ];    
       
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -134,7 +148,7 @@ const allowedOrigins = [
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'CSRF-Token'], // Add CSRF-Token here
 }));
 
 // 6. HTTP Parameter Pollution protection
@@ -158,9 +172,31 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes); // Use the new user routes for push token
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK' });
+app.get('/health', async (req, res) => {
+  try {
+    // Check DB
+    await pool.query('SELECT 1');
+    
+    // Check S3
+    const s3Ok = await testS3Connection();
+    
+    res.status(200).json({ 
+      status: 'OK',
+      database: 'connected',
+      s3: s3Ok ? 'connected' : 'disconnected'
+    });
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'ERROR',
+      error: 'Service unavailable' 
+    });
+  }
 });
+
+app.get('/api/csrf-token', (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
+
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "/frontend/dist")));
