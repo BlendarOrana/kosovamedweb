@@ -58,7 +58,7 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: err.message });
     }
 
-    const { name, password, email, number, id_card_number, address } = req.body;
+    const { name, password, email, number, id_card_number, address, title, region } = req.body;
 
     try {
       const result = await promisePool.query('SELECT * FROM users WHERE name = $1', [name]);
@@ -85,10 +85,10 @@ export const signup = async (req, res) => {
       }
 
       const insertResult = await promisePool.query(
-        `INSERT INTO users (name, password, email, number, id_card_number, address, profile_image_url, role, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'user', false) 
-         RETURNING id, name, email, number, id_card_number, address, profile_image_url, role, status`,
-        [name, hashedPassword, email, number, id_card_number, address, profileImageKey]
+        `INSERT INTO users (name, password, email, number, id_card_number, address, profile_image_url, title, region, role, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'user', false) 
+         RETURNING id, name, email, number, id_card_number, address, profile_image_url, title, region, role, status`,
+        [name, hashedPassword, email, number, id_card_number, address, profileImageKey, title, region]
       );
 
       const newUser = insertResult.rows[0];
@@ -103,7 +103,6 @@ export const signup = async (req, res) => {
     }
   });
 };
-
 // Web login
 export const login = async (req, res) => {
   const { name, password } = req.body;

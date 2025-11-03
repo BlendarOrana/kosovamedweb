@@ -22,19 +22,42 @@ const PendingUsers = () => {
   const [selectedRegions, setSelectedRegions] = useState({});
   const [selectedShifts, setSelectedShifts] = useState({});
   const [contractDates, setContractDates] = useState({});
+const regions = [
+  "Deçan",
+  "Dragash",
+  "Ferizaj",
+  "Fushë Kosovë",
+  "Gjakovë",
+  "Gjilan",
+  "Gllogoc (Drenas)",
+  "Gracanicë",
+  "Hani i Elezit",
+  "Istog",
+  "Junik",
+  "Kamenicë",
+  "Kaçanik",
+  "Klinë",
+  "Leposaviq",
+  "Lipjan",
+  "Malishevë",
+  "Mitrovicë",
+  "Mitrovicë e Veriut",
+  "Obiliq",
+  "Pejë",
+  "Podujevë",
+  "Prishtinë",
+  "Prizren",
+  "Rahovec",
+  "Shtime",
+  "Shtërpcë",
+  "Skenderaj",
+  "Suharekë",
+  "Viti",
+  "Vushtrri",
+  "Zubin Potok",
+  "Zveçan"
+];
 
-  const regions = [
-    "Istog",
-    "Gjilan",
-    "Malishevë",
-    "Skenderaj",
-    "Viti",
-    "Klinë",
-    "Ferizaj",
-    "Fushë Kosovë",
-    "Mitrovicë",
-    "Prizren"
-  ];
 
   const shifts = [
     { value: 1, label: "Paradite (Mëngjes)" },
