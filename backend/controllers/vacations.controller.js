@@ -68,9 +68,7 @@ export const requestVacation = async (req, res) => {
       return res.status(400).json({ message: "Cannot select yourself as replacement" });
     }
 
-    if (new Date(startDate) >= new Date(endDate)) {
-      return res.status(400).json({ message: "End date must be after start date" });
-    }
+
 
     // Check overlap
     const overlap = await promisePool.query(`
