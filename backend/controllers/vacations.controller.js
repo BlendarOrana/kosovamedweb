@@ -20,7 +20,7 @@ export const getAvailableReplacements = async (req, res) => {
       AND u.id NOT IN (
         -- Users who have approved/pending vacations during the period
         SELECT user_id FROM vacations
-        WHERE status IN ('approved', 'pending_manager_approval', 'pending_admin_approval')
+        WHERE status IN ('approved', 'pending_manager_approval', 'pending_replacement_acceptance')
         AND (
           (start_date <= $2 AND end_date >= $2) OR
           (start_date <= $3 AND end_date >= $3) OR
