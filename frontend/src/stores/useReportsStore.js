@@ -210,6 +210,57 @@ downloadEmploymentCertificatePDF: async (userId) => {
   }
 },
 
+  downloadMaternityLeavePDF: async (userId, leaveStartDate, childBirthDate) => {
+    set({ loading: true, downloadProgress: 0 });
+
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('userId', userId);
+      // Ensure we send the dates if selected, otherwise backend defaults apply
+      if (leaveStartDate) queryParams.append('leaveStartDate', leaveStartDate);
+      if (childBirthDate) queryParams.append('childBirthDate', childBirthDate);
+
+      const response = await axios.get(`/reports/generate-maternity-pdf?${queryParams.toString()}`, {
+        responseType: 'blob',
+        onDownloadProgress: (progressEvent) => {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          set({ downloadProgress: progress });
+        }
+      });
+
+      const blob = new Blob([response.data], { 
+        type: 'application/pdf' 
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = 'vendim_lehonie.pdf';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) filename = filenameMatch[1];
+      }
+
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Vendimi për lehoninë u shkarkua me sukses!');
+      set({ loading: false, downloadProgress: 0 });
+      return true;
+
+    } catch (error) {
+      set({ loading: false, downloadProgress: 0 });
+      const errorMessage = error.response?.data?.message || 'Gabim në shkarkimin e vendimit';
+      toast.error(errorMessage);
+      throw error;
+    }
+  },
+
   
   // Reset store state
   reset: () => set({ loading: false, downloadProgress: 0 })
