@@ -1,8 +1,18 @@
 import { useState, useEffect } from "react";
 import { useAdminStore } from "../stores/useAdminStore";
 import { useReportsStore } from "../stores/useReportsStore";
-import { FiUser, FiEdit2, FiKey, FiPlus, FiX, FiCheck, FiSearch, FiExternalLink, FiRefreshCw, FiFileText, FiClock } from "react-icons/fi";
+import { FiUser, FiEdit2, FiKey, FiPlus, FiX, FiCheck, FiSearch, FiExternalLink, FiRefreshCw, FiFileText, FiClock, FiFilter } from "react-icons/fi";
 import { useUserStore } from "../stores/useUserStore";
+
+// Defined outside component to avoid recreation on re-renders and reusability
+const regions = [
+  "Deçan", "Dragash", "Ferizaj", "Fushë Kosovë", "Gjakovë", "Gjilan",
+  "Gllogoc (Drenas)", "Gracanicë", "Hani i Elezit", "Istog", "Junik",
+  "Kamenicë", "Kaçanik", "Klinë", "Leposaviq", "Lipjan", "Malishevë",
+  "Mitrovicë", "Mitrovicë e Veriut", "Obiliq", "Pejë", "Podujevë",
+  "Prishtinë", "Prizren", "Rahovec", "Shtime", "Shtërpcë", "Skenderaj",
+  "Suharekë", "Viti", "Vushtrri", "Zubin Potok", "Zveçan"
+];
 
 const UserManagement = () => {
   const {
@@ -16,8 +26,7 @@ const UserManagement = () => {
   } = useAdminStore();
 
   const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = useReportsStore();
-    const { user: currentUser } = useUserStore(); // Add this line
-
+  const { user: currentUser } = useUserStore();
 
   const initialFormData = {
     name: "",
@@ -39,7 +48,11 @@ const UserManagement = () => {
   };
 
   const [formData, setFormData] = useState(initialFormData);
+  
+  // Search and Filter States
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRegionFilter, setSelectedRegionFilter] = useState(""); // New state for filtering by region
+
   const [modalOpen, setModalOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [currentUserForEdit, setCurrentUserForEdit] = useState(null);
@@ -58,9 +71,22 @@ const UserManagement = () => {
     }
   }, [getAllUsers, users.length]);
 
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // --- UPDATED FILTER LOGIC ---
+  const filteredUsers = users.filter(user => {
+    // 1. Text Search (Name, Email, or ID Card Number)
+    const lowerSearch = searchTerm.toLowerCase();
+    const matchesSearch = 
+      (user.name || "").toLowerCase().includes(lowerSearch) ||
+      (user.email || "").toLowerCase().includes(lowerSearch) ||
+      (user.id_card_number || "").toLowerCase().includes(lowerSearch);
+
+    // 2. Region Filter
+    const matchesRegion = selectedRegionFilter 
+      ? user.region === selectedRegionFilter 
+      : true;
+
+    return matchesSearch && matchesRegion;
+  });
 
   const resetFormAndCloseModals = () => {
     setFormData(initialFormData);
@@ -178,7 +204,7 @@ const UserManagement = () => {
   };
 
   const getRoleDisplayName = (role) => (role.charAt(0).toUpperCase() + role.slice(1));
-  
+
   const getShiftLabel = (shift) => {
     if (shift === 1) return "Paradite";
     if (shift === 2) return "Pasdite";
@@ -198,30 +224,54 @@ const UserManagement = () => {
         <p className="text-gray-300">Menaxhoni llogaritë dhe lejet e përdoruesve</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6">
-        <div className="relative flex-1 w-full">
-          <input
-            type="text"
-            placeholder="Kërko përdorues..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-white placeholder-gray-400"
-          />
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+      <div className="flex flex-col lg:flex-row gap-4 justify-between items-center mb-6">
+        {/* --- Search and Filters Section --- */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-2/3">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Kërko (Emri, ID, Email)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-white placeholder-gray-400"
+            />
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
+
+          {/* Region Filter Dropdown */}
+          <div className="relative min-w-[200px]">
+            <select
+              value={selectedRegionFilter}
+              onChange={(e) => setSelectedRegionFilter(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-white appearance-none cursor-pointer"
+            >
+              <option value="">Të gjitha Rajonet</option>
+              {regions.map((region) => (
+                <option key={region} value={region}>{region}</option>
+              ))}
+            </select>
+            <FiFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
         </div>
-        <div className="flex gap-2">
+
+        {/* --- Buttons Section --- */}
+        <div className="flex gap-2 w-full lg:w-auto justify-end">
           <button
             onClick={refreshUsers}
             className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition duration-300 shadow-lg"
             title="Rifresko listën"
           >
-            <FiRefreshCw className={loading ? "animate-spin" : ""} /> Rifresko
+            <FiRefreshCw className={loading ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Rifresko</span>
           </button>
           <button
             onClick={handleAddUser}
             className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-4 py-2 rounded-lg transition duration-300 shadow-lg"
           >
-            <FiPlus /> Shto Përdorues
+            <FiPlus /> 
+            <span className="hidden sm:inline">Shto Përdorues</span>
+            <span className="inline sm:hidden">Shto</span>
           </button>
         </div>
       </div>
@@ -230,7 +280,8 @@ const UserManagement = () => {
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-gray-700">
-              <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Emri</th>
+              <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Emri & IDo</th>
+              <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Rajoni</th>
               <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Roli</th>
               <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Turni</th>
               <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Statusi</th>
@@ -239,19 +290,27 @@ const UserManagement = () => {
           </thead>
           <tbody>
             {loading && users.length === 0 ? (
-              <tr><td colSpan="5" className="py-8 text-center text-gray-400">Duke ngarkuar...</td></tr>
+              <tr><td colSpan="6" className="py-8 text-center text-gray-400">Duke ngarkuar...</td></tr>
             ) : filteredUsers.length === 0 ? (
-              <tr><td colSpan="5" className="py-8 text-center text-gray-400">Asnjë përdorues nuk u gjet</td></tr>
+              <tr><td colSpan="6" className="py-8 text-center text-gray-400">Asnjë përdorues nuk u gjet</td></tr>
             ) : (
               filteredUsers.map((user) => (
                 <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/40">
-                  <td className="py-3 px-4 flex items-center gap-3">
-                    {user.profile_image_url ? (
-                      <img src={user.profile_image_url} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-8 h-8 bg-cyan-500/20 text-cyan-400 rounded-full flex items-center justify-center"><FiUser /></div>
-                    )}
-                    <span className="text-white font-medium">{user.name}</span>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      {user.profile_image_url ? (
+                        <img src={user.profile_image_url} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 bg-cyan-500/20 text-cyan-400 rounded-full flex items-center justify-center"><FiUser /></div>
+                      )}
+                      <div className="flex flex-col">
+                        <span className="text-white font-medium">{user.name}</span>
+                        {user.id_card_number && <span className="text-gray-500 text-xs">{user.id_card_number}</span>}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-gray-300 text-sm">
+                    {user.region || "-"}
                   </td>
                   <td className="py-3 px-4">
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 capitalize">{getRoleDisplayName(user.role)}</span>
@@ -265,44 +324,43 @@ const UserManagement = () => {
                   <td className="py-3 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{user.active ? 'Aktiv' : 'Joaktiv'}</span>
                   </td>
-             <td className="py-3 px-4 text-right">
-  <div className="flex justify-end gap-2">
-    <button 
-      onClick={() => handleEditUser(user.id)} 
-      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-cyan-400 transition-colors" 
-      title="Modifiko"
-    >
-      <FiEdit2 size={16} />
-    </button>
-       <button 
-          onClick={() => handlePasswordChange(user.id)} 
-          className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-yellow-400 transition-colors" 
-          title="Ndrysho fjalëkalimin"
-        >
-          <FiKey size={16} />
-        </button>
-    
-    {currentUser?.role === 'admin' && (
-      <>
-     
-        <button 
-          onClick={() => handleDownloadPDF(user.id)} 
-          className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-green-400 transition-colors" 
-          title="Shkarko PDF të ndërprerjes"
-        >
-          <FiFileText size={16} />
-        </button>
-        <button 
-          onClick={() => handleDownloadCertificate(user.id)} 
-          className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-blue-400 transition-colors" 
-          title="Shkarko vërtetimin e punësimit"
-        >
-          <FiFileText size={16} />
-        </button>
-      </>
-    )}
-  </div>
-</td>
+                  <td className="py-3 px-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button 
+                        onClick={() => handleEditUser(user.id)} 
+                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-cyan-400 transition-colors" 
+                        title="Modifiko"
+                      >
+                        <FiEdit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handlePasswordChange(user.id)} 
+                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-yellow-400 transition-colors" 
+                        title="Ndrysho fjalëkalimin"
+                      >
+                        <FiKey size={16} />
+                      </button>
+                      
+                      {currentUser?.role === 'admin' && (
+                        <>
+                          <button 
+                            onClick={() => handleDownloadPDF(user.id)} 
+                            className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-green-400 transition-colors" 
+                            title="Shkarko PDF të ndërprerjes"
+                          >
+                            <FiFileText size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDownloadCertificate(user.id)} 
+                            className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-blue-400 transition-colors" 
+                            title="Shkarko vërtetimin e punësimit"
+                          >
+                            <FiFileText size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
@@ -372,16 +430,9 @@ const UserManagement = () => {
                       <label className="block text-sm font-medium text-gray-300 mb-1">Rajoni</label>
                       <select name="region" value={formData.region} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">
                         <option value="">Zgjedh Rajonin</option>
-                        <option value="Istog">Istog</option>
-                        <option value="Gjilan">Gjilan</option>
-                        <option value="Malishevë">Malishevë</option>
-                        <option value="Skenderaj">Skenderaj</option>
-                        <option value="Viti">Viti</option>
-                        <option value="Klinë">Klinë</option>
-                        <option value="Ferizaj">Ferizaj</option>
-                        <option value="Fushë Kosovë">Fushë Kosovë</option>
-                        <option value="Mitrovicë">Mitrovicë</option>
-                        <option value="Prizren">Prizren</option>
+                        {regions.map((region) => (
+                          <option key={region} value={region}>{region}</option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -395,14 +446,22 @@ const UserManagement = () => {
                         ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Roli</label>
-                      <select name="role" value={formData.role} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">
-                        <option value="user">User</option>
-                        <option value="manager">Menagjer</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </div>
+                    
+     {currentUser?.role === 'admin' && (
+  <div>
+    <label className="block text-sm font-medium text-gray-300 mb-1">Roli</label>
+    <select 
+      name="role" 
+      value={formData.role} 
+      onChange={handleChange} 
+      className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"
+    >
+      <option value="user">User</option>
+      <option value="manager">Menagjer</option>
+      <option value="admin">Admin</option>
+    </select>
+  </div>
+)}
                     <div className="flex items-center pt-2">
                       <input id="active" name="active" type="checkbox" checked={formData.active} onChange={handleChange} className="w-4 h-4 text-cyan-500 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500"/>
                       <label htmlFor="active" className="ml-2 text-sm font-medium text-gray-300">Llogaria aktive</label>
