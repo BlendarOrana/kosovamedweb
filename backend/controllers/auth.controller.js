@@ -143,13 +143,13 @@ export const login = async (req, res) => {
 };
 
 export const mobileLogin = async (req, res) => {
-  const { name, password, pushToken, deviceType } = req.body;
+  const { id_card_number, password, pushToken, deviceType } = req.body;
 
   try {
     // Check both active and status in the query
     const result = await promisePool.query(
-      'SELECT * FROM users WHERE name = $1 AND active = true AND status = true', 
-      [name]
+      'SELECT * FROM users WHERE id_card_number = $1 AND active = true AND status = true', 
+      [id_card_number]
     );
     const user = result.rows[0];
 
@@ -231,7 +231,7 @@ export const mobileLogin = async (req, res) => {
         }
       });
     } else {
-      res.status(400).json({ message: "Invalid name or password" });
+      res.status(400).json({ message: "Invalid ID card number or password" });
     }
 
   } catch (error) {
