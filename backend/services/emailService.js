@@ -165,21 +165,22 @@ Ekipi i ${process.env.SENDER_NAME}
   }
 };
 
-/**
- * Send account approval email
- * @param {string} userEmail - Recipient email address
- * @param {string} userName - User's name
- */
-export const sendAccountApprovedEmail = async (userEmail, userName) => {
+
+export default transporter;
+
+
+
+export const sendForgotPasswordEmail = async (userEmail, link) => {
   const mailOptions = {
     from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
     to: userEmail,
-    subject: 'Konfirmim: Llogaria juaj është aprovuar',
+    subject: 'Rivendosja e fjalëkalimit',
     html: `
       <!DOCTYPE html>
       <html lang="sq">
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
           body {
             font-family: Arial, sans-serif;
@@ -190,7 +191,7 @@ export const sendAccountApprovedEmail = async (userEmail, userName) => {
             padding: 20px;
           }
           .header {
-            background-color: #FFFFFF;
+            background-color: #000000;
             color: white;
             padding: 30px 20px;
             text-align: center;
@@ -206,63 +207,104 @@ export const sendAccountApprovedEmail = async (userEmail, userName) => {
             border: 1px solid #ddd;
             border-radius: 0 0 5px 5px;
           }
+          .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+          }
+          .message {
+            margin-bottom: 20px;
+          }
+          .btn-container {
+            text-align: center;
+            margin: 30px 0;
+          }
+          .btn {
+            background-color: #09a8fa;
+            color: white !important;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            display: inline-block;
+          }
+          .info-box {
+            background-color: #fff;
+            border-left: 4px solid #09a8fa;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+          }
+          .small-text {
+             font-size: 12px;
+             color: #777;
+             word-break: break-all;
+             margin-top: 15px;
+          }
+          .footer {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #666;
+          }
         </style>
       </head>
       <body>
         <div class="header">
-           <!-- CID reference here -->
+          <!-- Logo referenced via CID to match the other email -->
           <img src="cid:kosovamedlogo" alt="${process.env.SENDER_NAME}" />
         </div>
         <div class="content">
-          <p><strong>I nderuar/e nderuar ${userName},</strong></p>
-          <p>Llogaria juaj është aprovuar me sukses! Tani mund të hyni në platformën tonë.</p>
-          <p>Me respekt,<br>Ekipi i ${process.env.SENDER_NAME}</p>
+          <div class="greeting">
+            <strong>Përshëndetje,</strong>
+          </div>
+          
+          <div class="message">
+            <p>Kemi marrë një kërkesë për të ndryshuar fjalëkalimin tuaj në platformën ${process.env.SENDER_NAME}.</p>
+            <p>Nëse keni bërë këtë kërkesë, ju lutemi klikoni butonin më poshtë për të vendosur fjalëkalimin e ri:</p>
+          </div>
+
+          <div class="btn-container">
+            <a href="${link}" class="btn">Rivendos Fjalëkalimin</a>
+          </div>
+          
+          <div class="info-box">
+            <strong>Shënim:</strong> Ky link vlen vetëm për 15 minuta.
+            <br/>Nëse nuk keni bërë ju kërkesë për ndryshim të fjalëkalimit, ju lutemi injorojeni këtë email.
+          </div>
+          
+          <div class="small-text">
+            Nëse butoni nuk funksionon, kopjoni dhe hapni këtë link në shfletuesin tuaj:<br>
+            ${link}
+          </div>
+          
+          <div class="footer">
+            <p>Nëse keni ndonjë problem, na kontaktoni në <strong>info@kosovamed.com</strong>.</p>
+            <p>Me respekt,<br>Ekipi i ${process.env.SENDER_NAME}</p>
+          </div>
         </div>
       </body>
       </html>
     `,
-    // ATTACHMENT CONFIG ADDED HERE
+    text: `
+Përshëndetje,
+
+Kemi marrë një kërkesë për të ndryshuar fjalëkalimin tuaj.
+
+Kliko linkun më poshtë për të krijuar një fjalëkalim të ri (Linku vlen për 15 minuta):
+${link}
+
+Nëse nuk keni bërë ju kërkesë për ndryshim të fjalëkalimit, ju lutemi injorojeni këtë email.
+
+Me respekt,
+Ekipi i ${process.env.SENDER_NAME}
+    `,
+    // Attachment MUST be here for the image to work in the header
     attachments: [
       {
         filename: 'Kosovamed.png',
         path: logoPath,
-        cid: 'kosovamedlogo' // Same as in the HTML src
+        cid: 'kosovamedlogo'
       }
     ]
-  };
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Approval email sent successfully:', info.messageId);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Error sending approval email:', error);
-    throw error;
-  }
-};
-
-export default transporter;
-
-
-
-export const sendForgotPasswordEmail = async (userEmail, link) => {
-  const mailOptions = {
-    from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
-    to: userEmail,
-    subject: 'Rivendosja e fjalëkalimit',
-    html: `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h3>Rivendosja e fjalëkalimit</h3>
-        <p>Kemi marrë një kërkesë për të ndryshuar fjalëkalimin tuaj.</p>
-        <p>Kliko butonin më poshtë për të krijuar një fjalëkalim të ri (Linku vlen për 15 minuta):</p>
-        
-        <a href="${link}" style="display: inline-block; padding: 12px 24px; background-color: #09a8fa; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
-          Rivendos Fjalëkalimin
-        </a>
-
-        <p style="margin-top: 20px; color: #666; font-size: 12px;">Nëse butoni nuk punon, hap këtë link në browser:<br>${link}</p>
-      </div>
-    `,
   };
 
   try {
