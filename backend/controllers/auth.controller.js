@@ -64,11 +64,11 @@ export const signup = async (req, res) => {
 
     const { name, password, email, number, id_card_number, address, title, region } = req.body;
 
-    try {
-      const result = await promisePool.query('SELECT * FROM users WHERE name = $1', [name]);
-      if (result.rows.length > 0) {
-        return res.status(400).json({ message: "User already exists" });
-      }
+try {
+  const result = await promisePool.query('SELECT * FROM users WHERE email = $1', [email]);
+  if (result.rows.length > 0) {
+    return res.status(400).json({ message: "User with this email already exists" });
+  }
 
       const hashedPassword = await bcrypt.hash(password, 10);
       
@@ -568,7 +568,7 @@ export const forgotPassword = async (req, res) => {
     };
 
     // Valid for only 15 minutes
-    const token = jwt.sign(payload, secret, { expiresIn: '15m' });
+    const token = jwt.sign(payload, secret, { expiresIn: '10m' });
 
     // IMPORTANT: Point this link to your WEB frontend
     const link = `https://kosovamed-app.com/reset-password/${user.id}/${token}`;
