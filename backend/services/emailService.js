@@ -8,7 +8,7 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const logoPath = path.join(__dirname, '..', 'assets', 'Kosovamed.webp');
+const logoPath = path.join(__dirname, '..', 'assets', 'Kosovamed.png');
 
 // Create transporter with Brevo SMTP credentials
 const transporter = nodemailer.createTransport({
@@ -39,7 +39,7 @@ export const sendRegistrationPendingEmail = async (userEmail, userName) => {
   // Read logo image and convert to base64
   const logoImage = fs.readFileSync(logoPath);
   const logoBase64 = logoImage.toString('base64');
-  const logoSrc = `data:image/webp;base64,${logoBase64}`;
+  const logoSrc = `data:image/png;base64,${logoBase64}`;
 
   const mailOptions = {
     from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
@@ -170,7 +170,7 @@ export const sendAccountApprovedEmail = async (userEmail, userName) => {
   // Read logo image and convert to base64
   const logoImage = fs.readFileSync(logoPath);
   const logoBase64 = logoImage.toString('base64');
-  const logoSrc = `data:image/webp;base64,${logoBase64}`;
+  const logoSrc = `data:image/png;base64,${logoBase64}`;
 
   const mailOptions = {
     from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
