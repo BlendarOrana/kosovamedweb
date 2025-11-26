@@ -25,7 +25,9 @@ const UserManagement = () => {
     changeUserPassword,
   } = useAdminStore();
 
-  const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF } = useReportsStore();
+  const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF,
+    downloadMaternityLeavePDF 
+   } = useReportsStore();
   const { user: currentUser } = useUserStore();
 
   const initialFormData = {
@@ -203,6 +205,15 @@ const UserManagement = () => {
     }
   };
 
+  const handleDownloadMaternity = async (userId) => {
+    try {
+      // This will trigger the download immediately with Today's date
+      await downloadMaternityLeavePDF(userId);
+    } catch (error) {
+      console.error("Error downloading maternity PDF:", error);
+    }
+  };
+
   const getRoleDisplayName = (role) => (role.charAt(0).toUpperCase() + role.slice(1));
 
   const getShiftLabel = (shift) => {
@@ -357,6 +368,14 @@ const UserManagement = () => {
                           >
                             <FiFileText size={16} />
                           </button>
+
+    <button 
+      onClick={() => handleDownloadMaternity(user.id)} 
+      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-pink-400 transition-colors" 
+      title="Shkarko vendimin e lehonisë"
+    >
+      <FiFileText size={16} />
+    </button>
                         </>
                       )}
                     </div>

@@ -520,3 +520,200 @@ export const generateEmploymentCertificatePDF = async (req, res) => {
     res.status(500).json({ message: "Error generating PDF" });
   }
 };
+
+
+
+
+
+export const generateMaternityLeavePDF = async (req, res) => {
+  // We expect userId, leaveStartDate, and childBirthDate from the request query
+  const { userId, leaveStartDate, childBirthDate } = req.query;
+
+  try {
+    // 1. Fetch user data
+    const query = `
+      SELECT 
+        name,
+        title,
+        contract_start_date,
+        contract_end_date
+      FROM users
+      WHERE id = $1
+    `;
+    
+    const result = await promisePool.query(query, [userId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const user = result.rows[0];
+    const actualDate = new Date().toLocaleDateString('sq-AL');
+
+    // 2. Helper function to format dates
+    const formatDate = (dateStr) => {
+      if (!dateStr) return 'XX.XX.XXXX';
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('sq-AL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    // 3. Calculate Dates
+    // Logic: 
+    // - 9 months total granted (0 to 9)
+    // - 6 months paid by employer (0 to 6)
+    // - 3 months paid by Gov (6 to 9)
+    // - 3 months unpaid extra (9 to 12)
+    
+    const startObj = leaveStartDate ? new Date(leaveStartDate) : new Date();
+    
+    // Function to add months without modifying original date object
+    const addMonths = (date, months) => {
+      const d = new Date(date);
+      d.setMonth(d.getMonth() + months);
+      // Optional: adjust back one day so periods align perfectly (Start 01.01 -> End 30.06)
+      // Removing 1 day typically aligns with "up to date X"
+      d.setDate(d.getDate() - 1); 
+      return d;
+    };
+
+    // Date strings
+    const strLeaveStart = formatDate(startObj);
+    const birthDateStr = formatDate(childBirthDate || new Date());
+    const strContractStart = formatDate(user.contract_start_date);
+    const strContractEnd = user.contract_end_date ? formatDate(user.contract_end_date) : 'Pa kufizuar';
+
+    // Period Calculations
+    // 0 - 6 Months
+    const date6MonthsRaw = addMonths(startObj, 6);
+    const str6MonthsEnd = formatDate(date6MonthsRaw);
+    
+    // 6 - 9 Months (The "Next 3 months")
+    // Start of Gov pay is the day after Employer pay ends
+    const dateGovStartRaw = new Date(date6MonthsRaw);
+    dateGovStartRaw.setDate(dateGovStartRaw.getDate() + 1);
+    const strGovStart = formatDate(dateGovStartRaw);
+
+    const date9MonthsRaw = addMonths(startObj, 9);
+    const str9MonthsEnd = formatDate(date9MonthsRaw); // End of total 9 months
+
+    // 9 - 12 Months (Unpaid)
+    const dateUnpaidStartRaw = new Date(date9MonthsRaw);
+    dateUnpaidStartRaw.setDate(dateUnpaidStartRaw.getDate() + 1);
+    const strUnpaidStart = formatDate(dateUnpaidStartRaw);
+
+    const date12MonthsRaw = addMonths(startObj, 12);
+    const strUnpaidEnd = formatDate(date12MonthsRaw);
+
+
+    // 4. Create PDF
+    const doc = new PDFDocument({ 
+      size: 'A4',
+      margin: 50 
+    });
+
+    const filename = `vendim_lehonie_${user.name.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'application/pdf');
+
+    doc.pipe(res);
+
+    // Add background image (reusing your existing logic)
+    try {
+      doc.image(bgImagePath, 0, 0, {
+        width: 595.28,
+        height: 841.89
+      });
+    } catch (imgError) {
+      console.warn('Background image not found, continuing without it:', imgError);
+    }
+
+    // Set position content (approx 150 points down to clear header logo usually in bg)
+    doc.y = 150;
+    doc.x = 50;
+
+    // --- Content Start ---
+
+    // Preamble
+    doc.fontSize(11).font('Helvetica');
+    doc.text(
+      `Në bazë të nenit 49 të ligjit të punës Nr.03/L-212 dhe Udhezimit Administrativ NR 01/2018 për Rregullimin e Procedurave Administrative të Kompensimit për pushimin e Lehonisë, të paguara nga Qeveria e R.Kosovës, Drejtori I Kompanisë z.Kastriot Asllani në Prishtinë lëshon këtë:`,
+      { align: 'justify' }
+    );
+    doc.moveDown();
+
+    doc.font('Helvetica-Bold').text('KosovaMed Healthcare SH.P.K', { align: 'left' });
+    doc.moveDown(1.5);
+
+    doc.fontSize(14).font('Helvetica-Bold').text('V E N D I M', { align: 'center' });
+    doc.moveDown(1.5);
+
+    doc.fontSize(12).font('Helvetica');
+
+    // Paragraph 1: Employment Details
+    doc.text(
+      `Znj. ${user.name} në punët dhe detyrat e punës ${user.title || 'infermiere'} punon prej dates ${strContractStart} dhe ka kontrat valide deri më datën ${strContractEnd}`,
+      { align: 'justify' }
+    );
+    doc.moveDown();
+
+    // Paragraph 2: Leave Granted (9 Months total)
+    doc.text(
+      `Znj. ${user.name} i lejohet pushimi I lehonisë në kohëzgjatje prej 9 muajve,duke filluar prej ${strLeaveStart} deri më ${str9MonthsEnd}.`,
+      { align: 'justify' }
+    );
+    doc.moveDown();
+
+    // Paragraph 3: First 6 Months (70%)
+    doc.text(
+      `Pagesën për 6 muajt e pare në lartësi prej 70% te pages bazë do ta bëjë punëdhënsi nga mjetet buxhetore ku lehona është duke punuar, duke filluar prej ${strLeaveStart} deri më ${str6MonthsEnd}`,
+      { align: 'justify' }
+    );
+    doc.moveDown();
+
+    // Paragraph 4: Next 3 Months (50% Government)
+    doc.text(
+      `Pagesen për 3 muajt në vijim në lartësi prej 50% të pages mesatare nga Fondi I Qeveris së Kosovës do të bëjë MFPT duke filluar prej dates ${strGovStart} deri më ${str9MonthsEnd}.`,
+      { align: 'justify' }
+    );
+    doc.moveDown();
+
+    // Paragraph 5: Extra 3 Months Unpaid
+    doc.text(
+      `Lehona ka të drejtë të shfrytëzoi edhe 3 muaj tjera pa pagesë, duke filluar prej dates ${strUnpaidStart} deri më ${strUnpaidEnd}.`,
+      { align: 'justify' }
+    );
+    doc.moveDown(2);
+
+    // Arsyetim Section
+    doc.fontSize(12).font('Helvetica-Bold').text('A r s y e t i m i', { align: 'left' });
+    doc.moveDown();
+
+    doc.font('Helvetica').text(
+      `Në përputhje me nenin 49 të ligjit të punës nr.03/L-212, e në mbështetje të Udhëzimit Administrativ Nr 01/2018 për rregullimin e Procedurave Administrative të Kompensimit për Pushimin e Lehonisë të Paguara nga Qeveria si dhe dokumentacionit mjekësore të ofruara nga znj. ${user.name}, vërtetohet se e emeruara ka lindur me datën ${birthDateStr}, andaj të njejtës I lejojhet pushimi I lejonisë siç është përcaktuar në dizpozitiv të këtij Vendimi.`,
+      { align: 'justify' }
+    );
+
+    // Signatures
+    doc.moveDown(4);
+    
+    // We create two columns using the width of the page
+    const startY = doc.y;
+    
+    // Left column: Data
+    doc.text('Data:', 50, startY);
+    doc.text(actualDate, 50, startY + 15);
+
+    // Right column: Director
+    // A4 width is ~595. Right align around 350-400
+    const rightColX = 350;
+    doc.text('Drejtori I përgjithshëm', rightColX, startY);
+    doc.text('__________________', rightColX, startY + 15);
+    doc.text('Z.Kastriot Asllani', rightColX, startY + 35);
+
+    doc.end();
+
+  } catch (error) {
+    console.error("Error generating maternity leave PDF:", error);
+    res.status(500).json({ message: "Error generating PDF" });
+  }
+};

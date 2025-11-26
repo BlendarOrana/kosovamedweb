@@ -3,7 +3,8 @@ import {
   generateAttendanceReport,
   generateVacationReport,
   generateContractTerminationPDF,
-  generateEmploymentCertificatePDF
+  generateEmploymentCertificatePDF,
+  generateMaternityLeavePDF
   
 } from '../controllers/reports.controller.js';
 import { protectRoute, adminRoute } from "../middleware/auth.middleware.js";
@@ -15,5 +16,7 @@ router.get('/attendance-excel', protectRoute, adminRoute, generateAttendanceRepo
 router.get('/vacation-excel', protectRoute, adminRoute, generateVacationReport);
 router.get('/contract-termination-pdf', protectRoute, adminRoute, generateContractTerminationPDF);
 router.get('/employment-certificate-pdf', protectRoute, adminRoute, generateEmploymentCertificatePDF);
+router.get('/generate-maternity-pdf', generateMaternityLeavePDF);
+
 
 export default router;
