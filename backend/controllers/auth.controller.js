@@ -6,6 +6,9 @@ dotenv.config();
 import { uploadToS3, getCloudFrontUrl } from '../lib/s3.js'; // **Step 1: Import your s3 helper**
 import multer from 'multer';
 
+import { sendRegistrationPendingEmail } from '../services/emailService.js';
+
+
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
 const upload = multer({ 
@@ -95,6 +98,16 @@ export const signup = async (req, res) => {
       
       newUser.profile_image_url = newUser.profile_image_url ? getCloudFrontUrl(newUser.profile_image_url) : null;
 
+      // Send registration pending email
+      try {
+        await sendRegistrationPendingEmail(email, name);
+        console.log(`Registration email sent to ${email}`);
+      } catch (emailError) {
+        // Log the error but don't fail the registration
+        console.error('Failed to send registration email:', emailError);
+        // Optionally, you could add a flag to retry sending later
+      }
+
       res.status(201).json(newUser);
 
     } catch (error) {
@@ -103,6 +116,7 @@ export const signup = async (req, res) => {
     }
   });
 };
+
 // Web login
 export const login = async (req, res) => {
   const { name, password } = req.body;
