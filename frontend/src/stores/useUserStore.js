@@ -43,4 +43,24 @@ export const useUserStore = create((set, get) => ({
       set({ checkingAuth: false, user: null });
     }
   },
+
+    resetPassword: async (id, token, newPassword) => {
+    set({ loading: true });
+    try {
+      // Sending payload as required by your Backend Controller
+      const res = await axios.post("/auth/reset-password", { 
+        id, 
+        token, 
+        newPassword 
+      });
+      
+      set({ loading: false });
+      toast.success(res.data.message);
+      return true; // Return true to indicate success to component
+    } catch (error) {
+      set({ loading: false });
+      toast.error(error.response?.data?.message || "Failed to reset password");
+      return false;
+    }
+  },
 }));
