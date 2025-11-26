@@ -190,7 +190,7 @@ export const sendAccountApprovedEmail = async (userEmail, userName) => {
             padding: 20px;
           }
           .header {
-            background-color: #000000;
+            background-color: #FFFFFF;
             color: white;
             padding: 30px 20px;
             text-align: center;
