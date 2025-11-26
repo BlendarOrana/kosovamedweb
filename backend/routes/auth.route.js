@@ -9,7 +9,9 @@ import {
   getProfile, 
   getAllUsers,
 createShiftRequest,
-getMyShiftRequests
+getMyShiftRequests,
+forgotPassword,
+resetPassword
 } from '../controllers/auth.controller.js';
 import { protectRoute, adminRoute } from "../middleware/auth.middleware.js";
 
@@ -32,5 +34,12 @@ router.post('/mobile-login', mobileLogin);
 router.post('/request', protectRoute, createShiftRequest);
 router.get('/shift/request',protectRoute,getMyShiftRequests)
 
+
+
+
+
+
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 export default router;

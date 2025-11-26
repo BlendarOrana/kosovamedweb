@@ -6,6 +6,8 @@ import LoginPage from "./pages/LoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import { useUserStore } from "./stores/useUserStore";
 import LoadingSpinner from "./components/LoadingSpinner";
+import ResetPassword from "./pages/ResetPassword"; // 1. IMPORT THIS
+
 
 // ScrollToTop component
 function ScrollToTop() {
@@ -70,6 +72,11 @@ function App() {
             element={
               !user ? <LoginPage /> : <Navigate to={getDefaultRouteForUser()} replace />
             }
+          />
+
+           <Route 
+            path="/reset-password/:id/:token" 
+            element={<ResetPassword />} 
           />
 
           {/* Admin Route - Only accessible to admin users */}

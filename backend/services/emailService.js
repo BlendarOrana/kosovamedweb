@@ -190,7 +190,7 @@ export const sendAccountApprovedEmail = async (userEmail, userName) => {
             padding: 20px;
           }
           .header {
-            background-color: #000000;
+            background-color: #FFFFFF;
             color: white;
             padding: 30px 20px;
             text-align: center;
@@ -242,3 +242,35 @@ export const sendAccountApprovedEmail = async (userEmail, userName) => {
 };
 
 export default transporter;
+
+
+
+export const sendForgotPasswordEmail = async (userEmail, link) => {
+  const mailOptions = {
+    from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
+    to: userEmail,
+    subject: 'Rivendosja e fjalëkalimit',
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h3>Rivendosja e fjalëkalimit</h3>
+        <p>Kemi marrë një kërkesë për të ndryshuar fjalëkalimin tuaj.</p>
+        <p>Kliko butonin më poshtë për të krijuar një fjalëkalim të ri (Linku vlen për 15 minuta):</p>
+        
+        <a href="${link}" style="display: inline-block; padding: 12px 24px; background-color: #09a8fa; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+          Rivendos Fjalëkalimin
+        </a>
+
+        <p style="margin-top: 20px; color: #666; font-size: 12px;">Nëse butoni nuk punon, hap këtë link në browser:<br>${link}</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log("Reset email sent to:", userEmail);
+    return { success: true };
+  } catch (error) {
+    console.error("Email error:", error);
+    throw error;
+  }
+};

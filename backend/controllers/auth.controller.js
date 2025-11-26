@@ -6,7 +6,8 @@ dotenv.config();
 import { uploadToS3, getCloudFrontUrl } from '../lib/s3.js'; // **Step 1: Import your s3 helper**
 import multer from 'multer';
 
-import { sendRegistrationPendingEmail } from '../services/emailService.js';
+import { sendRegistrationPendingEmail,sendForgotPasswordEmail } from '../services/emailService.js';
+
 
 
 // Configure multer for memory storage
@@ -537,5 +538,81 @@ export const getMyShiftRequests = async (req, res) => {
   } catch (error) {
     console.log("Error in getMyShiftRequests controller", error.message);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+
+
+
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const result = await promisePool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
+
+    // Security: Always return "OK" even if user doesn't exist so hackers can't fish for emails
+    if (!user) {
+       return res.json({ message: "Nëse ekziston llogaria, një email u dërgua." });
+    }
+
+    // THE SECRET SAUCE: App Secret + Current Password
+    // This creates a unique signature. If the user changes password, this token immediately invalidates.
+    const secret = process.env.ACCESS_TOKEN_SECRET + user.password;
+    
+    const payload = {
+       email: user.email,
+       id: user.id
+    };
+
+    // Valid for only 15 minutes
+    const token = jwt.sign(payload, secret, { expiresIn: '15m' });
+
+    // IMPORTANT: Point this link to your WEB frontend
+    const link = `https://kosovamed-app.com/reset-password/${user.id}/${token}`;
+
+    await sendForgotPasswordEmail(user.email, link);
+
+    res.json({ message: "Linku për ndryshimin e fjalëkalimit u dërgua në email!" });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// 2. RESET PASSWORD (Triggered by the Website link)
+export const resetPassword = async (req, res) => {
+  // Use 'params' because the website sends them in URL usually, or 'body' depending on your web form
+  const { id, token, newPassword } = req.body; 
+
+  try {
+    const result = await promisePool.query('SELECT * FROM users WHERE id = $1', [id]);
+    const user = result.rows[0];
+
+    if (!user) return res.status(404).json({ message: "Përdoruesi nuk u gjet." });
+
+    const secret = process.env.ACCESS_TOKEN_SECRET + user.password;
+
+    try {
+      // If verifying fails, token is modified or expired
+      const payload = jwt.verify(token, secret);
+    } catch (err) {
+      return res.status(400).json({ message: "Linku ka skaduar ose është i pavlefshëm." });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update DB
+    await promisePool.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, id]);
+
+    res.json({ message: "Fjalëkalimi u ndryshua me sukses!" });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error resetting password" });
   }
 };
