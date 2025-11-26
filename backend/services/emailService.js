@@ -1,7 +1,14 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from 'fs';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const logoPath = path.join(__dirname, '..', 'assets', 'Kosovamed.webp');
 
 // Create transporter with Brevo SMTP credentials
 const transporter = nodemailer.createTransport({
@@ -29,6 +36,11 @@ transporter.verify((error, success) => {
  * @param {string} userName - User's name
  */
 export const sendRegistrationPendingEmail = async (userEmail, userName) => {
+  // Read logo image and convert to base64
+  const logoImage = fs.readFileSync(logoPath);
+  const logoBase64 = logoImage.toString('base64');
+  const logoSrc = `data:image/webp;base64,${logoBase64}`;
+
   const mailOptions = {
     from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
     to: userEmail,
@@ -49,11 +61,15 @@ export const sendRegistrationPendingEmail = async (userEmail, userName) => {
             padding: 20px;
           }
           .header {
-            background-color: #4CAF50;
+            background-color: #000000;
             color: white;
-            padding: 20px;
+            padding: 30px 20px;
             text-align: center;
             border-radius: 5px 5px 0 0;
+          }
+          .header img {
+            max-width: 200px;
+            height: auto;
           }
           .content {
             background-color: #f9f9f9;
@@ -70,7 +86,7 @@ export const sendRegistrationPendingEmail = async (userEmail, userName) => {
           }
           .info-box {
             background-color: #fff;
-            border-left: 4px solid #4CAF50;
+            border-left: 4px solid #09a8fa;
             padding: 15px;
             margin: 20px 0;
           }
@@ -87,7 +103,7 @@ export const sendRegistrationPendingEmail = async (userEmail, userName) => {
       </head>
       <body>
         <div class="header">
-          <h2>${process.env.SENDER_NAME}</h2>
+          <img src="${logoSrc}" alt="${process.env.SENDER_NAME}" />
         </div>
         <div class="content">
           <div class="greeting">
@@ -110,7 +126,7 @@ export const sendRegistrationPendingEmail = async (userEmail, userName) => {
           </div>
           
           <div class="footer">
-            <p>Nëse keni ndonjë pyetje shtesë, ju lutemi na kontaktoni në <strong>${process.env.SENDER_EMAIL}</strong>.</p>
+            <p>Nëse keni ndonjë pyetje shtesë, ju lutemi na kontaktoni në <strong>info@kosovamed.com</strong>.</p>
             <p>Me respekt,<br>Ekipi i ${process.env.SENDER_NAME}</p>
           </div>
         </div>
@@ -128,7 +144,7 @@ Derisa verifikimi të përfundojë:
 • Nuk do të keni ende qasje të plotë në sistem.
 • Do të njoftoheni me email sapo kërkesa juaj të aprovohet.
 
-Nëse keni ndonjë pyetje shtesë, ju lutemi na kontaktoni në ${process.env.SENDER_EMAIL}.
+Nëse keni ndonjë pyetje shtesë, ju lutemi na kontaktoni në info@kosovamed.com.
 
 Me respekt,
 Ekipi i ${process.env.SENDER_NAME}
@@ -151,6 +167,11 @@ Ekipi i ${process.env.SENDER_NAME}
  * @param {string} userName - User's name
  */
 export const sendAccountApprovedEmail = async (userEmail, userName) => {
+  // Read logo image and convert to base64
+  const logoImage = fs.readFileSync(logoPath);
+  const logoBase64 = logoImage.toString('base64');
+  const logoSrc = `data:image/webp;base64,${logoBase64}`;
+
   const mailOptions = {
     from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
     to: userEmail,
@@ -170,11 +191,15 @@ export const sendAccountApprovedEmail = async (userEmail, userName) => {
             padding: 20px;
           }
           .header {
-            background-color: #4CAF50;
+            background-color: #000000;
             color: white;
-            padding: 20px;
+            padding: 30px 20px;
             text-align: center;
             border-radius: 5px 5px 0 0;
+          }
+          .header img {
+            max-width: 200px;
+            height: auto;
           }
           .content {
             background-color: #f9f9f9;
@@ -186,7 +211,7 @@ export const sendAccountApprovedEmail = async (userEmail, userName) => {
       </head>
       <body>
         <div class="header">
-          <h2>${process.env.SENDER_NAME}</h2>
+          <img src="${logoSrc}" alt="${process.env.SENDER_NAME}" />
         </div>
         <div class="content">
           <p><strong>I nderuar/e nderuar ${userName},</strong></p>
