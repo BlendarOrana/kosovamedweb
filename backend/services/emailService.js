@@ -272,7 +272,7 @@ export const sendForgotPasswordEmail = async (userEmail, link) => {
           </div>
           
           <div class="small-text">
-            Nëse butoni nuk funksionon, kopjoni dhe hapni këtë link në shfletuesin tuaj:<br>
+            Nëse butoni nuk funksionon, kopjoni dhe hapni këtë link në website :<br>
             ${link}
           </div>
           

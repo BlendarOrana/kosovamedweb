@@ -6,8 +6,8 @@ import LoginPage from "./pages/LoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import { useUserStore } from "./stores/useUserStore";
 import LoadingSpinner from "./components/LoadingSpinner";
-import ResetPassword from "./pages/ResetPassword"; // 1. IMPORT THIS
-
+import ResetPassword from "./pages/ResetPassword";
+import PrivacyPolicy from "./pages/PrivacyPolicy"; // 1. IMPORT ADDED
 
 // ScrollToTop component
 function ScrollToTop() {
@@ -45,7 +45,6 @@ function App() {
       case "admin":
       case "manager":
         return "/admin";
-
      
       default:
         return "/";
@@ -65,7 +64,6 @@ function App() {
         <ScrollToTop />
         <Routes>
         
-          
           {/* Home Route - Default page for unauthenticated users */}
           <Route 
             path="/" 
@@ -73,6 +71,12 @@ function App() {
               !user ? <LoginPage /> : <Navigate to={getDefaultRouteForUser()} replace />
             }
           />
+           
+           {/* Privacy Policy - Public Route (Added) */}
+           <Route 
+             path="/privacy-policy" 
+             element={<PrivacyPolicy />} 
+           />
 
            <Route 
             path="/reset-password/:id/:token" 
@@ -88,8 +92,6 @@ function App() {
                 : <Navigate to="/" replace />
             } 
           />
-
-     
 
           <Route 
             path="/dashboard" 
