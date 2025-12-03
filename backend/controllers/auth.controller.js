@@ -161,10 +161,22 @@ export const mobileLogin = async (req, res) => {
   const { id_card_number, password, pushToken, deviceType } = req.body;
 
   try {
+    // Trim and normalize the id_card_number to remove all whitespace
+    const normalizedIdCard = id_card_number?.toString().trim().replace(/\s+/g, '');
+    
+    // Validate required fields
+    if (!normalizedIdCard || !password) {
+      return res.status(400).json({ message: "ID card number and password are required" });
+    }
+
     // Check both active and status in the query
+    // Using TRIM and REPLACE in SQL to handle any whitespace in the database too
     const result = await promisePool.query(
-      'SELECT * FROM users WHERE id_card_number = $1 AND active = true AND status = true', 
-      [id_card_number]
+      `SELECT * FROM users 
+       WHERE REPLACE(TRIM(id_card_number), ' ', '') = $1 
+       AND active = true 
+       AND status = true`, 
+      [normalizedIdCard]
     );
     const user = result.rows[0];
 
@@ -254,7 +266,6 @@ export const mobileLogin = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 // Update push token endpoint (for when app refreshes token)
 export const updatePushToken = async (req, res) => {
