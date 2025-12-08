@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { useAdminStore } from "../stores/useAdminStore";
 import { useReportsStore } from "../stores/useReportsStore";
-import { FiUser, FiEdit2, FiKey, FiPlus, FiX, FiCheck, FiSearch, FiExternalLink, FiRefreshCw, FiFileText, FiClock, FiFilter } from "react-icons/fi";
 import { useUserStore } from "../stores/useUserStore";
+import { 
+  FiUser, FiEdit2, FiKey, FiPlus, FiX, FiCheck, 
+  FiSearch, FiExternalLink, FiRefreshCw, FiFileText, 
+  FiClock, FiFilter, FiDownload 
+} from "react-icons/fi";
 
-// Defined outside component to avoid recreation on re-renders and reusability
-const regions = [
+// --- Constants (Defined outside to prevent re-declaration) ---
+const REGIONS = [
   "Deçan", "Dragash", "Ferizaj", "Fushë Kosovë", "Gjakovë", "Gjilan",
   "Gllogoc (Drenas)", "Gracanicë", "Hani i Elezit", "Istog", "Junik",
   "Kamenicë", "Kaçanik", "Klinë", "Leposaviq", "Lipjan", "Malishevë",
@@ -14,84 +18,45 @@ const regions = [
   "Suharekë", "Viti", "Vushtrri", "Zubin Potok", "Zveçan"
 ];
 
-const UserManagement = () => {
-  const {
-    users,
-    loading,
-    getAllUsers,
-    refreshUsers,
-    createUser,
-    updateUser,
-    changeUserPassword,
-  } = useAdminStore();
+const SHIFTS = [
+  { value: 1, label: "Paradite", color: "text-orange-400 bg-orange-400/10" },
+  { value: 2, label: "Pasdite", color: "text-blue-400 bg-blue-400/10" }
+];
 
-  const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF,
-    downloadMaternityLeavePDF 
-   } = useReportsStore();
+const INITIAL_FORM_DATA = {
+  name: "", password: "", confirmPassword: "", number: "", role: "user",
+  active: true, region: "", shift: "", title: "", email: "",
+  contract: null, license: null, id_card_number: "", address: "",
+  contract_start_date: "", contract_end_date: "",
+};
+
+const UserManagement = () => {
+  // Store Hooks
+  const { users, loading, getAllUsers, refreshUsers, createUser, updateUser, changeUserPassword } = useAdminStore();
+  const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF, downloadMaternityLeavePDF } = useReportsStore();
   const { user: currentUser } = useUserStore();
 
-  const initialFormData = {
-    name: "",
-    password: "",
-    confirmPassword: "",
-    number: "",
-    role: "user",
-    active: true,
-    region: "",
-    shift: "",
-    title: "",
-    email: "",
-    contract: null,
-    license: null,
-    id_card_number: "",
-    address: "",
-    contract_start_date: "",
-    contract_end_date: "",
-  };
-
-  const [formData, setFormData] = useState(initialFormData);
-  
-  // Search and Filter States
+  // Local State
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedRegionFilter, setSelectedRegionFilter] = useState(""); // New state for filtering by region
-
+  const [selectedRegionFilter, setSelectedRegionFilter] = useState("");
+  
+  // Modal State
   const [modalOpen, setModalOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
   const [currentUserForEdit, setCurrentUserForEdit] = useState(null);
   const [newPassword, setNewPassword] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
 
-  const shifts = [
-    { value: 1, label: "Paradite (Mëngjes)" },
-    { value: 2, label: "Pasdite" }
-  ];
-
+  // Initial Load
   useEffect(() => {
-    if (users.length === 0) {
-      getAllUsers();
-    }
+    if (users.length === 0) getAllUsers();
   }, [getAllUsers, users.length]);
 
-  // --- UPDATED FILTER LOGIC ---
-  const filteredUsers = users.filter(user => {
-    // 1. Text Search (Name, Email, or ID Card Number)
-    const lowerSearch = searchTerm.toLowerCase();
-    const matchesSearch = 
-      (user.name || "").toLowerCase().includes(lowerSearch) ||
-      (user.email || "").toLowerCase().includes(lowerSearch) ||
-      (user.id_card_number || "").toLowerCase().includes(lowerSearch);
-
-    // 2. Region Filter
-    const matchesRegion = selectedRegionFilter 
-      ? user.region === selectedRegionFilter 
-      : true;
-
-    return matchesSearch && matchesRegion;
-  });
-
-  const resetFormAndCloseModals = () => {
-    setFormData(initialFormData);
+  // --- Handlers ---
+  const resetState = () => {
+    setFormData(INITIAL_FORM_DATA);
     setIsEditing(false);
     setSelectedUserId(null);
     setCurrentUserForEdit(null);
@@ -100,54 +65,39 @@ const UserManagement = () => {
     setNewPassword("");
   };
 
-  const handleAddUser = () => {
-    setIsEditing(false);
-    setFormData(initialFormData);
-    setModalOpen(true);
-  };
-
-  const handleEditUser = (id) => {
-    const userData = users.find(u => u.id === id);
-    if (userData) {
-      setFormData({
-        name: userData.name || "",
-        email: userData.email || "",
-        number: userData.number || "",
-        role: userData.role || "user",
-        active: userData.active,
-        region: userData.region || "",
-        shift: userData.shift || "",
-        title: userData.title || "",
-        password: "",
-        confirmPassword: "",
-        contract: null,
-        license: null,
-        id_card_number: userData.id_card_number || "",
-        address: userData.address || "",
-        contract_start_date: userData.contract_start_date ? new Date(userData.contract_start_date).toISOString().split('T')[0] : "",
-        contract_end_date: userData.contract_end_date ? new Date(userData.contract_end_date).toISOString().split('T')[0] : "",
-      });
-      setCurrentUserForEdit(userData);
-      setSelectedUserId(id);
-      setIsEditing(true);
-      setModalOpen(true);
-    } else {
-      console.error("User not found in local state!");
-    }
-  };
-
-  const handlePasswordChange = (id) => {
-    setSelectedUserId(id);
-    setNewPassword("");
-    setPasswordModalOpen(true);
-  };
-
   const handleChange = (e) => {
     const { name, value, type, checked, files } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'file' ? files[0] : (type === 'checkbox' ? checked : value)
     }));
+  };
+
+  const handleEditUser = (id) => {
+    const user = users.find(u => u.id === id);
+    if (!user) return;
+
+    setFormData({
+      ...INITIAL_FORM_DATA, // reset first
+      name: user.name || "",
+      email: user.email || "",
+      number: user.number || "",
+      role: user.role || "user",
+      active: user.active,
+      region: user.region || "",
+      shift: user.shift || "",
+      title: user.title || "",
+      id_card_number: user.id_card_number || "",
+      address: user.address || "",
+      contract_start_date: user.contract_start_date?.split('T')[0] || "",
+      contract_end_date: user.contract_end_date?.split('T')[0] || "",
+      // Files and password intentionally reset
+    });
+    
+    setCurrentUserForEdit(user);
+    setSelectedUserId(id);
+    setIsEditing(true);
+    setModalOpen(true);
   };
 
   const handleSubmit = async (e) => {
@@ -159,415 +109,360 @@ const UserManagement = () => {
 
     const dataToSend = new FormData();
     Object.keys(formData).forEach(key => {
-      if (key !== 'confirmPassword' && formData[key] !== null && formData[key] !== '') {
-        if ((key === 'contract_start_date' || key === 'contract_end_date') && formData[key] === '') {
-          return;
-        }
-        dataToSend.append(key, formData[key]);
-      }
+      // Logic: Skip empty files, empty dates, and nulls
+      if (key === 'confirmPassword') return;
+      if (formData[key] === null || formData[key] === '') return;
+      dataToSend.append(key, formData[key]);
     });
 
-    const success = isEditing
+    const success = isEditing 
       ? await updateUser(selectedUserId, dataToSend)
       : await createUser(dataToSend);
 
-    if (success) {
-      resetFormAndCloseModals();
-    }
+    if (success) resetState();
   };
 
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      alert("Fjalëkalimi duhet të ketë të paktën 6 karaktere");
-      return;
-    }
-
-    const success = await changeUserPassword(selectedUserId, newPassword);
-    if (success) {
-      resetFormAndCloseModals();
-    }
+    if (newPassword.length < 6) return alert("Min 6 karaktere");
+    if (await changeUserPassword(selectedUserId, newPassword)) resetState();
   };
 
-  const handleDownloadPDF = async (userId) => {
-    try {
-      await downloadContractTerminationPDF(userId);
-    } catch (error) {
-      console.error("Error downloading PDF:", error);
-    }
-  };
+  // --- Helpers ---
+  const filteredUsers = users.filter(user => {
+    const lowerSearch = searchTerm.toLowerCase();
+    const matchesSearch = 
+      (user.name || "").toLowerCase().includes(lowerSearch) ||
+      (user.email || "").toLowerCase().includes(lowerSearch) ||
+      (user.id_card_number || "").toLowerCase().includes(lowerSearch);
+    const matchesRegion = selectedRegionFilter ? user.region === selectedRegionFilter : true;
+    return matchesSearch && matchesRegion;
+  });
 
-  const handleDownloadCertificate = async (userId) => {
-    try {
-      await downloadEmploymentCertificatePDF(userId);
-    } catch (error) {
-      console.error("Error downloading certificate:", error);
-    }
-  };
-
-  const handleDownloadMaternity = async (userId) => {
-    try {
-      // This will trigger the download immediately with Today's date
-      await downloadMaternityLeavePDF(userId);
-    } catch (error) {
-      console.error("Error downloading maternity PDF:", error);
-    }
-  };
-
-  const getRoleDisplayName = (role) => (role.charAt(0).toUpperCase() + role.slice(1));
-
-  const getShiftLabel = (shift) => {
-    if (shift === 1) return "Paradite";
-    if (shift === 2) return "Pasdite";
-    return "N/A";
-  };
-
-  const getShiftColor = (shift) => {
-    if (shift === 1) return "bg-orange-500/20 text-orange-400";
-    if (shift === 2) return "bg-blue-500/20 text-blue-400";
-    return "bg-gray-500/20 text-gray-400";
-  };
+  const getShiftData = (shiftVal) => SHIFTS.find(s => s.value == shiftVal) || { label: "N/A", color: "text-gray-400" };
 
   return (
-    <div className="bg-gray-800/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-cyan-500/30">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-white mb-2">Menaxhimi i Përdoruesve</h2>
-        <p className="text-gray-300">Menaxhoni llogaritë dhe lejet e përdoruesve</p>
-      </div>
+    <div className="bg-gray-800/80 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-gray-700 h-[calc(100vh-100px)] flex flex-col">
+      {/* Header & Controls */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-1">Menaxhimi i Përdoruesve</h2>
+          <p className="text-gray-400 text-sm">Lista e plotë dhe administrimi</p>
+        </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 justify-between items-center mb-6">
-        {/* --- Search and Filters Section --- */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-2/3">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <input
-              type="text"
-              placeholder="Kërko (Emri, ID, Email)..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-white placeholder-gray-400"
-            />
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+          {/* Filters */}
+          <div className="flex gap-2 flex-1">
+             <div className="relative flex-1 min-w-[150px]">
+              <input
+                type="text"
+                placeholder="Kërko..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-sm text-white focus:ring-1 focus:ring-cyan-500"
+              />
+              <FiSearch className="absolute left-3 top-2.5 text-gray-400" size={14} />
+            </div>
+            
+            <div className="relative min-w-[140px]">
+              <select
+                value={selectedRegionFilter}
+                onChange={(e) => setSelectedRegionFilter(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-sm text-white appearance-none cursor-pointer focus:ring-1 focus:ring-cyan-500"
+              >
+                <option value="">Të gjitha</option>
+                {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <FiFilter className="absolute left-3 top-2.5 text-gray-400" size={14} />
+            </div>
           </div>
 
-          {/* Region Filter Dropdown */}
-          <div className="relative min-w-[200px]">
-            <select
-              value={selectedRegionFilter}
-              onChange={(e) => setSelectedRegionFilter(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-white appearance-none cursor-pointer"
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <button onClick={refreshUsers} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-200 transition">
+              <FiRefreshCw className={loading ? "animate-spin" : ""} size={20} />
+            </button>
+            <button 
+              onClick={() => { resetState(); setModalOpen(true); }}
+              className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium flex items-center gap-2 transition shadow-lg shadow-cyan-900/20"
             >
-              <option value="">Të gjitha Rajonet</option>
-              {regions.map((region) => (
-                <option key={region} value={region}>{region}</option>
-              ))}
-            </select>
-            <FiFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <FiPlus /> 
+              <span className="hidden sm:inline">Përdorues i ri</span>
+            </button>
           </div>
-        </div>
-
-        {/* --- Buttons Section --- */}
-        <div className="flex gap-2 w-full lg:w-auto justify-end">
-          <button
-            onClick={refreshUsers}
-            className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition duration-300 shadow-lg"
-            title="Rifresko listën"
-          >
-            <FiRefreshCw className={loading ? "animate-spin" : ""} />
-            <span className="hidden sm:inline">Rifresko</span>
-          </button>
-          <button
-            onClick={handleAddUser}
-            className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-4 py-2 rounded-lg transition duration-300 shadow-lg"
-          >
-            <FiPlus /> 
-            <span className="hidden sm:inline">Shto Përdorues</span>
-            <span className="inline sm:hidden">Shto</span>
-          </button>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Table Container - Flex Grow to Fill Height */}
+      <div className="flex-1 overflow-auto rounded-xl border border-gray-700/50 bg-gray-900/20 relative">
         <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-gray-700">
-              <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Emri & IDo</th>
-              <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Rajoni</th>
-              <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Roli</th>
-              <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Turni</th>
-              <th className="py-3 px-4 text-left text-gray-400 uppercase text-xs tracking-wider">Statusi</th>
-              <th className="py-3 px-4 text-right text-gray-400 uppercase text-xs tracking-wider">Veprimet</th>
+          <thead className="bg-gray-800 sticky top-0 z-10 text-xs uppercase text-gray-400 font-semibold tracking-wider text-left">
+            <tr>
+              <th className="py-4 px-6 rounded-tl-xl bg-gray-800">Emri & Detajet</th>
+              <th className="py-4 px-6 bg-gray-800">Rajoni</th>
+              <th className="py-4 px-6 bg-gray-800">Roli</th>
+              <th className="py-4 px-6 bg-gray-800">Statusi</th>
+              <th className="py-4 px-6 bg-gray-800 rounded-tr-xl text-right">Veprimet</th>
             </tr>
           </thead>
-          <tbody>
-            {loading && users.length === 0 ? (
-              <tr><td colSpan="6" className="py-8 text-center text-gray-400">Duke ngarkuar...</td></tr>
+          <tbody className="divide-y divide-gray-700/50">
+            {users.length === 0 && loading ? (
+              <tr><td colSpan="5" className="py-10 text-center text-gray-400">Duke u ngarkuar...</td></tr>
             ) : filteredUsers.length === 0 ? (
-              <tr><td colSpan="6" className="py-8 text-center text-gray-400">Asnjë përdorues nuk u gjet</td></tr>
+              <tr><td colSpan="5" className="py-10 text-center text-gray-400">Asnjë përdorues</td></tr>
             ) : (
-              filteredUsers.map((user) => (
-                <tr key={user.id} className="border-b border-gray-700 hover:bg-gray-700/40">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      {user.profile_image_url ? (
-                        <img src={user.profile_image_url} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
-                      ) : (
-                        <div className="w-8 h-8 bg-cyan-500/20 text-cyan-400 rounded-full flex items-center justify-center"><FiUser /></div>
-                      )}
-                      <div className="flex flex-col">
-                        <span className="text-white font-medium">{user.name}</span>
-                        {user.id_card_number && <span className="text-gray-500 text-xs">{user.id_card_number}</span>}
+              filteredUsers.map((user) => {
+                const shiftData = getShiftData(user.shift);
+                return (
+                  <tr key={user.id} className="hover:bg-gray-800/50 transition-colors">
+                    <td className="py-3 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 bg-gray-700 rounded-full flex items-center justify-center text-cyan-500 border border-gray-600 shrink-0 overflow-hidden">
+                          {user.profile_image_url ? (
+                             <img src={user.profile_image_url} className="w-full h-full object-cover"/>
+                          ) : <FiUser />}
+                        </div>
+                        <div>
+                          <div className="text-white font-medium text-sm">{user.name}</div>
+                          <div className="text-gray-500 text-xs">{user.email}</div>
+                          <div className={`text-xs mt-0.5 flex items-center gap-1 ${shiftData.color} w-fit px-1.5 py-0.5 rounded`}>
+                            <FiClock size={10} /> {shiftData.label}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-gray-300 text-sm">
-                    {user.region || "-"}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 capitalize">{getRoleDisplayName(user.role)}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 w-fit ${getShiftColor(user.shift)}`}>
-                      <FiClock size={12} />
-                      {getShiftLabel(user.shift)}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{user.active ? 'Aktiv' : 'Joaktiv'}</span>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button 
-                        onClick={() => handleEditUser(user.id)} 
-                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-cyan-400 transition-colors" 
-                        title="Modifiko"
-                      >
-                        <FiEdit2 size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handlePasswordChange(user.id)} 
-                        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-yellow-400 transition-colors" 
-                        title="Ndrysho fjalëkalimin"
-                      >
-                        <FiKey size={16} />
-                      </button>
-                      
-                      {currentUser?.role === 'admin' && (
-                        <>
-                          <button 
-                            onClick={() => handleDownloadPDF(user.id)} 
-                            className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-green-400 transition-colors" 
-                            title="Shkarko PDF të ndërprerjes"
-                          >
-                            <FiFileText size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDownloadCertificate(user.id)} 
-                            className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-blue-400 transition-colors" 
-                            title="Shkarko vërtetimin e punësimit"
-                          >
-                            <FiFileText size={16} />
-                          </button>
-
-    <button 
-      onClick={() => handleDownloadMaternity(user.id)} 
-      className="p-2 bg-gray-700 hover:bg-gray-600 rounded-md text-pink-400 transition-colors" 
-      title="Shkarko vendimin e lehonisë"
-    >
-      <FiFileText size={16} />
-    </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td className="py-3 px-6 text-gray-300 text-sm">{user.region || "-"}</td>
+                    <td className="py-3 px-6">
+                      <span className="px-2 py-1 bg-purple-900/30 text-purple-300 rounded text-xs border border-purple-500/20 capitalize">
+                        {user.role}
+                      </span>
+                    </td>
+                    <td className="py-3 px-6">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${user.active ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                        {user.active ? 'Aktiv' : 'Pasiv'}
+                      </span>
+                    </td>
+                    <td className="py-3 px-6 text-right">
+                      <div className="flex justify-end gap-1">
+                        <button onClick={() => handleEditUser(user.id)} className="p-1.5 hover:bg-gray-700 rounded text-cyan-400 transition" title="Modifiko">
+                          <FiEdit2 size={16} />
+                        </button>
+                        <button onClick={() => { setSelectedUserId(user.id); setPasswordModalOpen(true); }} className="p-1.5 hover:bg-gray-700 rounded text-yellow-400 transition" title="Ndrysho Fjalëkalimin">
+                          <FiKey size={16} />
+                        </button>
+                        
+                        {currentUser?.role === 'admin' && (
+                          <div className="flex border-l border-gray-600 ml-1 pl-1 gap-1">
+                            <button onClick={() => downloadContractTerminationPDF(user.id)} className="p-1.5 hover:bg-gray-700 rounded text-red-400 transition" title="Ndërprerja Kontratës">
+                              <FiFileText size={16} />
+                            </button>
+                            <button onClick={() => downloadEmploymentCertificatePDF(user.id)} className="p-1.5 hover:bg-gray-700 rounded text-blue-400 transition" title="Vërtetim Punësimi">
+                              <FiCheck size={16} />
+                            </button>
+                            <button onClick={() => downloadMaternityLeavePDF(user.id)} className="p-1.5 hover:bg-gray-700 rounded text-pink-400 transition" title="Pushim Lehonie">
+                              <FiDownload size={16} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
+      {/* --- Main Edit/Create Modal (Fixed Scroll) --- */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex  justify-center z-[9999] p-4">
-          <div className="bg-gray-800 rounded-lg max-w-3xl w-full border border-cyan-500/30 shadow-xl flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center p-6 border-b border-gray-700">
-              <h2 className="text-xl font-bold text-white">{isEditing ? "Modifiko Përdoruesin" : "Shto Përdorues të Ri"}</h2>
-              <button onClick={resetFormAndCloseModals} className="text-gray-400 hover:text-white"><FiX size={24} /></button>
+        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overscroll-contain">
+          {/* 
+            Container structure fixed:
+            1. flex-col to stack Header, Body, Footer 
+            2. max-h to respect screen limits
+            3. w-full and max-w for responsiveness 
+          */}
+          <div className="bg-gray-800 rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-700 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* 1. Header (Fixed) */}
+            <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-gray-800/50">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                {isEditing ? <FiEdit2 className="text-cyan-400"/> : <FiPlus className="text-cyan-400"/>}
+                {isEditing ? "Modifiko Përdoruesin" : "Regjistro Përdorues"}
+              </h2>
+              <button onClick={resetState} className="text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg p-1 transition"><FiX size={24} /></button>
             </div>
 
-            <div className="p-6 overflow-y-auto">
-              <form id="user-form" onSubmit={handleSubmit} className="space-y-6">
+            {/* 2. Scrollable Content (Takes remaining space) */}
+            <div className="flex-1 overflow-y-auto p-6 scroll-smooth scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+              <form id="user-form" onSubmit={handleSubmit} className="space-y-8">
                 
-                {/* Personal Information Section */}
-                <div>
-                  <h3 className="text-lg font-semibold text-cyan-400 mb-4 border-b border-gray-700 pb-2">Informacioni Personal</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Section 1 */}
+                <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-700/50">
+                  <h3 className="text-sm uppercase tracking-wider font-semibold text-cyan-500 mb-4 border-b border-gray-700/50 pb-2">Informacioni Personal</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <InputGroup label="Emri i plotë *" name="name" value={formData.name} onChange={handleChange} required />
+                    <InputGroup label="Email *" name="email" type="email" value={formData.email} onChange={handleChange} required />
+                    <InputGroup label="Telefon" name="number" value={formData.number} onChange={handleChange} />
+                    <InputGroup label="ID / Letërnjoftimi" name="id_card_number" value={formData.id_card_number} onChange={handleChange} />
+                    <InputGroup label="Titulli / Pozita" name="title" value={formData.title} onChange={handleChange} />
+                    <InputGroup label="Adresa" name="address" value={formData.address} onChange={handleChange} />
+                  </div>
+                </div>
+
+                {/* Section 2 */}
+                <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-700/50">
+                  <h3 className="text-sm uppercase tracking-wider font-semibold text-cyan-500 mb-4 border-b border-gray-700/50 pb-2">Konfigurimi i Llogarisë</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {!isEditing && (
+                      <>
+                        <InputGroup label="Fjalëkalimi *" type="password" name="password" value={formData.password} onChange={handleChange} required />
+                        <InputGroup label="Konfirmo Fjalëkalimin *" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required />
+                      </>
+                    )}
+                    
+                    <SelectGroup label="Rajoni" name="region" value={formData.region} onChange={handleChange} options={REGIONS} />
+                    
                     <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Emri*</label>
-                      <input type="text" name="name" value={formData.name} onChange={handleChange} required className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
+                      <label className="block text-sm font-medium text-gray-400 mb-1.5">Turni</label>
+                      <select name="shift" value={formData.shift} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-colors">
+                        <option value="">Zgjedh...</option>
+                        {SHIFTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                      </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Email*</label>
-                      <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Numri i Telefonit</label>
-                      <input type="text" name="number" value={formData.number} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Titulli</label>
-                      <input type="text" name="title" value={formData.title} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Numri i Letërnjoftimit</label>
-                      <input type="text" name="id_card_number" value={formData.id_card_number} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Adresa</label>
-                      <input type="text" name="address" value={formData.address} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
+
+                    {currentUser?.role === 'admin' && (
+                       <div>
+                         <label className="block text-sm font-medium text-gray-400 mb-1.5">Roli</label>
+                         <select name="role" value={formData.role} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-1 focus:ring-cyan-500">
+                           <option value="user">User</option>
+                           <option value="manager">Manager</option>
+                           <option value="admin">Admin</option>
+                         </select>
+                       </div>
+                    )}
+                    
+                    <div className="flex items-center mt-6">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="active" checked={formData.active} onChange={handleChange} className="sr-only peer"/>
+                        <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                        <span className="ml-3 text-sm font-medium text-gray-300">Llogaria Aktive</span>
+                      </label>
                     </div>
                   </div>
                 </div>
 
-                {/* Account Settings Section */}
-                <div>
-                  <h3 className="text-lg font-semibold text-cyan-400 my-4 border-b border-gray-700 pb-2">Cilësimet e Llogarisë</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {!isEditing && (
-                      <>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">Fjalëkalimi*</label>
-                          <input type="password" name="password" value={formData.password} onChange={handleChange} required className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-300 mb-1">Konfirmo Fjalëkalimin*</label>
-                          <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
-                        </div>
-                      </>
-                    )}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Rajoni</label>
-                      <select name="region" value={formData.region} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">
-                        <option value="">Zgjedh Rajonin</option>
-                        {regions.map((region) => (
-                          <option key={region} value={region}>{region}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Turni</label>
-                      <select name="shift" value={formData.shift} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500">
-                        <option value="">Zgjedh Turnin</option>
-                        {shifts.map((shift) => (
-                          <option key={shift.value} value={shift.value}>
-                            {shift.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                {/* Section 3 - Files */}
+                <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-700/50">
+                  <h3 className="text-sm uppercase tracking-wider font-semibold text-cyan-500 mb-4 border-b border-gray-700/50 pb-2">Kontrata & Dokumentet</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <InputGroup label="Fillimi i punës" type="date" name="contract_start_date" value={formData.contract_start_date} onChange={handleChange} />
+                    <InputGroup label="Mbarimi i punës" type="date" name="contract_end_date" value={formData.contract_end_date} onChange={handleChange} />
                     
-     {currentUser?.role === 'admin' && (
-  <div>
-    <label className="block text-sm font-medium text-gray-300 mb-1">Roli</label>
-    <select 
-      name="role" 
-      value={formData.role} 
-      onChange={handleChange} 
-      className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"
-    >
-      <option value="user">User</option>
-      <option value="manager">Menagjer</option>
-      <option value="admin">Admin</option>
-    </select>
-  </div>
-)}
-                    <div className="flex items-center pt-2">
-                      <input id="active" name="active" type="checkbox" checked={formData.active} onChange={handleChange} className="w-4 h-4 text-cyan-500 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500"/>
-                      <label htmlFor="active" className="ml-2 text-sm font-medium text-gray-300">Llogaria aktive</label>
+                    {/* Contracts Section */}
+                    <div className="col-span-1 md:col-span-2 grid md:grid-cols-2 gap-6 pt-2">
+                        <FileInput 
+                            label="Kontrata e Punës" 
+                            name="contract" 
+                            onChange={handleChange}
+                            currentUrl={isEditing ? currentUserForEdit?.contract_url : null}
+                            buttonText="Shiko Kontratën"
+                        />
+                        <FileInput 
+                            label="Licensa Mjekësore" 
+                            name="license" 
+                            onChange={handleChange}
+                            currentUrl={isEditing ? currentUserForEdit?.license_url : null}
+                            buttonText="Shiko Licensën"
+                        />
                     </div>
                   </div>
                 </div>
-                
-                {/* Documents Section */}
-                <div>
-                  <h3 className="text-lg font-semibold text-cyan-400 my-4 border-b border-gray-700 pb-2">Dokumentet</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Data e Fillimit të Punes</label>
-                      <input type="date" name="contract_start_date" value={formData.contract_start_date} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">Data e Mbarimit të Punes</label>
-                      <input type="date" name="contract_end_date" value={formData.contract_end_date} onChange={handleChange} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
-                    </div>
-                    {isEditing && currentUserForEdit?.contract_url && (
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Kontrata Aktuale</label>
-                        <a href={currentUserForEdit.contract_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 hover:underline">
-                          <FiExternalLink />
-                          <span>Shiko Kontratën</span>
-                        </a>
-                      </div>
-                    )}
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-300 mb-1">{isEditing ? "Ngarko Kontratë të Re (Opsionale)" : "Ngarko Kontratën (Opsionale)"}</label>
-                      <input id="contract" name="contract" type="file" accept=".pdf,.doc,.docx" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
-                    </div>
-                    {isEditing && currentUserForEdit?.license_url && (
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-300 mb-1">Licensa Aktuale</label>
-                        <a href={currentUserForEdit.license_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 hover:underline">
-                          <FiExternalLink />
-                          <span>Shiko Licensën</span>
-                        </a>
-                      </div>
-                    )}
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-300 mb-1">{isEditing ? "Ngarko Licensë të Re (Opsionale)" : "Ngarko Licensën (Opsionale)"}</label>
-                      <input id="license" name="license" type="file" accept=".pdf,.doc,.docx" onChange={handleChange} className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"/>
-                    </div>
-                  </div>
-                </div>
+
               </form>
             </div>
             
-            <div className="p-6 border-t border-gray-700 flex justify-end gap-4">
-              <button type="button" onClick={resetFormAndCloseModals} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors">Anulo</button>
-              <button type="submit" form="user-form" className="px-4 py-2 bg-cyan-500 text-white font-bold rounded-lg hover:bg-cyan-600 transition-colors flex items-center gap-2" disabled={loading}>
-                <FiCheck />
-                {isEditing ? "Përditëso" : "Krijo"}
+            {/* 3. Footer (Fixed) */}
+            <div className="p-5 border-t border-gray-700 bg-gray-800/50 flex justify-end gap-3 z-10">
+              <button type="button" onClick={resetState} className="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition font-medium">Anulo</button>
+              <button type="submit" form="user-form" className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition font-bold flex items-center gap-2 shadow-lg shadow-cyan-900/20" disabled={loading}>
+                <FiCheck className="stroke-2"/>
+                {isEditing ? "Ruaj Ndryshimet" : "Krijo Përdoruesin"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- Password Modal --- */}
+      {/* Password Change Modal */}
       {passwordModalOpen && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-gray-800 rounded-lg max-w-md w-full border border-cyan-500/30 shadow-xl">
-            <div className="flex justify-between items-center p-6 border-b border-gray-700">
-              <h2 className="text-xl font-bold text-white">Ndrysho Fjalëkalimin</h2>
-              <button onClick={() => setPasswordModalOpen(false)} className="text-gray-400 hover:text-white"><FiX size={24} /></button>
-            </div>
-            <form onSubmit={handlePasswordSubmit}>
-              <div className="p-6">
-                <label className="block text-sm font-medium text-gray-300 mb-1">Fjalëkalimi i Ri*</label>
-                <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white focus:ring-cyan-500"/>
+        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-[10000]">
+           <div className="bg-gray-800 rounded-xl max-w-sm w-full border border-gray-600 shadow-2xl p-6">
+              <div className="flex justify-between items-center mb-6">
+                 <h3 className="text-lg font-bold text-white">Ndrysho Fjalëkalimin</h3>
+                 <button onClick={() => setPasswordModalOpen(false)} className="text-gray-400 hover:text-white"><FiX /></button>
               </div>
-              <div className="p-6 border-t border-gray-700 flex justify-end gap-4">
-                <button type="button" onClick={() => setPasswordModalOpen(false)} className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors">Anulo</button>
-                <button type="submit" className="px-4 py-2 bg-cyan-500 text-white font-bold rounded-lg hover:bg-cyan-600 transition-colors flex items-center gap-2" disabled={loading}>
-                  <FiKey size={16} />
-                  Ndrysho Fjalëkalimin
-                </button>
-              </div>
-            </form>
-          </div>
+              <form onSubmit={handlePasswordSubmit}>
+                 <label className="block text-sm font-medium text-gray-400 mb-2">Fjalëkalimi i ri</label>
+                 <input 
+                   type="password" 
+                   value={newPassword} 
+                   onChange={(e) => setNewPassword(e.target.value)}
+                   className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:border-cyan-500 mb-6" 
+                   autoFocus
+                 />
+                 <div className="flex justify-end gap-3">
+                   <button type="button" onClick={() => setPasswordModalOpen(false)} className="px-4 py-2 text-sm text-gray-300 hover:text-white">Anulo</button>
+                   <button type="submit" className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg text-sm font-medium transition">Ndrysho</button>
+                 </div>
+              </form>
+           </div>
         </div>
       )}
     </div>
   );
 };
+
+// --- Mini Sub-components for Cleaner JSX ---
+const InputGroup = ({ label, ...props }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-400 mb-1.5">{label}</label>
+    <input {...props} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-colors placeholder-gray-500" />
+  </div>
+);
+
+const SelectGroup = ({ label, options, ...props }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-400 mb-1.5">{label}</label>
+    <select {...props} className="w-full bg-gray-700 border border-gray-600 rounded-lg p-2.5 text-white focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-colors">
+      <option value="">Zgjedh...</option>
+      {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+    </select>
+  </div>
+);
+
+const FileInput = ({ label, currentUrl, buttonText, ...props }) => (
+    <div className="bg-gray-800/50 p-3 rounded-lg border border-gray-600/50">
+        <label className="block text-sm font-medium text-gray-400 mb-2">{label}</label>
+        {currentUrl && (
+            <a href={currentUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-cyan-400 hover:underline mb-2">
+                <FiExternalLink /> {buttonText}
+            </a>
+        )}
+        <input 
+            type="file" 
+            accept=".pdf,.doc,.docx"
+            {...props}
+            // IMPORTANT: Removed 'value' attribute here
+            className="block w-full text-xs text-gray-400
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-md file:border-0
+            file:text-xs file:font-semibold
+            file:bg-cyan-900/30 file:text-cyan-400
+            hover:file:bg-cyan-900/50 cursor-pointer"
+        />
+    </div>
+);
 
 export default UserManagement;
