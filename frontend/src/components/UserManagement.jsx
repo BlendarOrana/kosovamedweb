@@ -15,7 +15,7 @@ const REGIONS = [
   "Kamenicë", "Kaçanik", "Klinë", "Leposaviq", "Lipjan", "Malishevë",
   "Mitrovicë", "Mitrovicë e Veriut", "Obiliq", "Pejë", "Podujevë",
   "Prishtinë", "Prizren", "Rahovec", "Shtime", "Shtërpcë", "Skenderaj",
-  "Suharekë", "Viti", "Vushtrri", "Zubin Potok", "Zveçan"
+  "Suharekë", "Viti", "Vushtrri", "Zubin Potok", "Zveçan","Zyre Qendrore KosovaMed HC"
 ];
 
 const SHIFTS = [
