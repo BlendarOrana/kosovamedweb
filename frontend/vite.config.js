@@ -2,56 +2,14 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import svgr from 'vite-plugin-svgr';
 import path from 'path';
-import { VitePWA } from 'vite-plugin-pwa';
+// import { VitePWA } from 'vite-plugin-pwa'; // Commented out - no longer using PWA
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     svgr(),
-VitePWA({
-  registerType: 'autoUpdate',
-  includeAssets: ['favicon.ico', '**/*.webp', '**/*.png', '**/*.jpg', '**/*.jpeg'], // Add your assets
-  workbox: {
-    // navigateFallback: '/index.html',
-    // navigateFallbackAllowlist: [/^(?!\/).*/],
-    navigateFallbackDenylist: [
-      /^\/api\/.*$/, // Only exclude API calls, not static assets
-    ],
-    runtimeCaching: [
-      // API caching
-      {
-        urlPattern: /^\/api\/.*$/,
-        handler: 'NetworkFirst',
-        options: {
-          cacheName: 'api-cache-v2',
-          expiration: {
-            maxEntries: 100,
-            maxAgeSeconds: 300
-          }
-        }
-      },
-      // Add static assets caching
-      {
-        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
-        handler: 'CacheFirst', // Cache images aggressively
-        options: {
-          cacheName: 'images-cache',
-          expiration: {
-            maxEntries: 200,
-            maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-          },
-        },
-      },
-      // Font caching
-   
-    ],
-    cleanupOutdatedCaches: true,
-    skipWaiting: true,
-    clientsClaim: true,
-  },
-
-    })
+    // VitePWA removed - caching disabled
   ],
 
   resolve: {
