@@ -5,7 +5,7 @@ import { useUserStore } from "../stores/useUserStore";
 import { 
   FiUser, FiEdit2, FiKey, FiPlus, FiX, FiCheck, 
   FiSearch, FiExternalLink, FiRefreshCw, FiFileText, 
-  FiClock, FiFilter, FiDownload 
+  FiClock, FiFilter, FiDownload, FiTrash2 
 } from "react-icons/fi";
 
 // --- Constants (Defined outside to prevent re-declaration) ---
@@ -32,7 +32,7 @@ const INITIAL_FORM_DATA = {
 
 const UserManagement = () => {
   // Store Hooks
-  const { users, loading, getAllUsers, refreshUsers, createUser, updateUser, changeUserPassword } = useAdminStore();
+  const { users, loading, getAllUsers, refreshUsers, createUser, updateUser, changeUserPassword, deleteUser } = useAdminStore();
   const { downloadContractTerminationPDF, downloadEmploymentCertificatePDF, downloadMaternityLeavePDF } = useReportsStore();
   const { user: currentUser } = useUserStore();
 
@@ -126,6 +126,12 @@ const UserManagement = () => {
     e.preventDefault();
     if (newPassword.length < 6) return alert("Min 6 karaktere");
     if (await changeUserPassword(selectedUserId, newPassword)) resetState();
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (window.confirm("A jeni i sigurt që dëshironi të fshini këtë përdorues? Veprimi nuk mund të kthehet prapa.")) {
+        await deleteUser(id);
+    }
   };
 
   // --- Helpers ---
@@ -268,6 +274,10 @@ const UserManagement = () => {
                             </button>
                             <button onClick={() => downloadMaternityLeavePDF(user.id)} className="p-1.5 hover:bg-gray-700 rounded text-pink-400 transition" title="Pushim Lehonie">
                               <FiDownload size={16} />
+                            </button>
+                            {/* Delete User Button - Only for Admin */}
+                            <button onClick={() => handleDeleteUser(user.id)} className="p-1.5 hover:bg-gray-700 rounded text-red-600 hover:text-red-500 transition ml-1" title="Fshij Përdoruesin">
+                              <FiTrash2 size={16} />
                             </button>
                           </div>
                         )}
