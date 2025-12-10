@@ -13,7 +13,7 @@ const REGIONS = [
   "Deçan", "Dragash", "Ferizaj", "Fushë Kosovë", "Gjakovë", "Gjilan",
   "Gllogoc (Drenas)", "Gracanicë", "Hani i Elezit", "Istog", "Junik",
   "Kamenicë", "Kaçanik", "Klinë", "Leposaviq", "Lipjan", "Malishevë",
-  "Mitrovicë", "Mitrovicë e Veriut", "Obiliq", "Pejë", "Podujevë",
+  "Mitrovicë", "Mitrovicë e Veriut", "Obiliq", "Pejë", "Podujevë", 
   "Prishtinë", "Prizren", "Rahovec", "Shtime", "Shtërpcë", "Skenderaj",
   "Suharekë", "Viti", "Vushtrri", "Zubin Potok", "Zveçan","Zyre Qendrore KosovaMed HC"
 ];
@@ -177,19 +177,26 @@ const UserManagement = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <button onClick={refreshUsers} className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-200 transition">
-              <FiRefreshCw className={loading ? "animate-spin" : ""} size={20} />
-            </button>
-            <button 
-              onClick={() => { resetState(); setModalOpen(true); }}
-              className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium flex items-center gap-2 transition shadow-lg shadow-cyan-900/20"
-            >
-              <FiPlus /> 
-              <span className="hidden sm:inline">Përdorues i ri</span>
-            </button>
-          </div>
+  {/* Action Buttons */}
+<div className="flex gap-2">
+  {currentUser?.role === 'admin' && (
+    <>
+      <button 
+        onClick={refreshUsers} 
+        className="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-200 transition"
+      >
+        <FiRefreshCw className={loading ? "animate-spin" : ""} size={20} />
+      </button>
+      <button 
+        onClick={() => { resetState(); setModalOpen(true); }}
+        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium flex items-center gap-2 transition shadow-lg shadow-cyan-900/20"
+      >
+        <FiPlus /> 
+        <span className="hidden sm:inline">Përdorues i ri</span>
+      </button>
+    </>
+  )}
+</div>
         </div>
       </div>
 
