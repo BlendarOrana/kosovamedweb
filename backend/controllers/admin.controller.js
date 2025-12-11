@@ -311,16 +311,37 @@ export const deleteUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // Delete contract from S3 if it exists
-    const contractKey = checkResult.rows[0].contract_url;
-    if (contractKey) {
-      await deleteFromS3(contractKey);
+    // Start a transaction
+    await promisePool.query('BEGIN');
+    
+    try {
+      // Option 1: Set replacement_user_id to NULL where this user is referenced
+      await promisePool.query(
+        'UPDATE vacations SET replacement_user_id = NULL WHERE replacement_user_id = $1',
+        [id]
+      );
+      
+      // Option 2 (alternative): Delete vacation records for this user
+      // await promisePool.query('DELETE FROM vacations WHERE user_id = $1', [id]);
+      
+      // Delete contract from S3 if it exists
+      const contractKey = checkResult.rows[0].contract_url;
+      if (contractKey) {
+        await deleteFromS3(contractKey);
+      }
+      
+      // Delete the user
+      await promisePool.query('DELETE FROM users WHERE id = $1', [id]);
+      
+      // Commit transaction
+      await promisePool.query('COMMIT');
+      
+      res.json({ message: 'User deleted successfully' });
+    } catch (err) {
+      // Rollback on error
+      await promisePool.query('ROLLBACK');
+      throw err;
     }
-    
-    // Delete the user
-    await promisePool.query('DELETE FROM users WHERE id = $1', [id]);
-    
-    res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
