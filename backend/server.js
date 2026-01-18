@@ -106,10 +106,10 @@ const authLimiter = rateLimit({
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// 4. Cookie Parser
+// 4. Cookie Parser (MUST come before CSRF)
 app.use(cookieParser());
 
-// 5. CORS - Must come before CSRF
+// 5. CORS Configuration (MUST come before CSRF)
 app.use(cors({
   origin: (origin, callback) => {
     if (process.env.NODE_ENV !== "production") {
@@ -142,6 +142,7 @@ app.use(compression());
 // 8. SQL Injection Protection
 app.use(sqlInjectionProtection);
 
+// 9. CSRF Protection Configuration
 const csrfProtection = csrf({ 
   cookie: {
     httpOnly: true,
@@ -150,33 +151,14 @@ const csrfProtection = csrf({
   }
 });
 
-// Middleware to conditionally apply CSRF protection
-// Middleware to conditionally apply CSRF protection
-const conditionalCsrfProtection = (req, res, next) => {
-  // Skip CSRF for safe methods (GET, HEAD, OPTIONS)
-  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-    return next();
-  }
-  
-  // Check if request is from mobile app
-  const clientType = req.headers['x-client-type'];
-  
-  // Skip CSRF for mobile apps
-  if (clientType === 'mobile' || clientType === 'react-native') {
-    return next();
-  }
-  
-  // Apply CSRF protection for web clients on state-changing methods
-  csrfProtection(req, res, next);
-};
-
-// CSRF token endpoint (only for web clients)
-app.get('/api/csrf-token', conditionalCsrfProtection, (req, res) => {
-  res.json({ csrfToken: req.csrfToken?.() || null });
+// CRITICAL: CSRF token endpoint MUST come BEFORE general API protection
+// This endpoint generates and returns the CSRF token
+app.get('/api/csrf-token', csrfProtection, (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
 });
 
-// Apply rate limiting and conditional CSRF to API routes
-app.use('/api/', apiLimiter, conditionalCsrfProtection);
+// Apply rate limiting and CSRF protection to all other API routes
+app.use('/api/', apiLimiter, csrfProtection);
 
 // --- API ROUTES ---
 app.use("/api/auth", authLimiter, authRoutes);
@@ -186,7 +168,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes);
 
-// Health check endpoint
+// Health check endpoint (no CSRF needed for GET)
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
 });
@@ -205,6 +187,15 @@ app.use(/^\/api\/.*/, (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
+  
+  // Handle CSRF token errors specifically
+  if (err.code === 'EBADCSRFTOKEN') {
+    return res.status(403).json({
+      error: 'Invalid CSRF token',
+      code: 'EBADCSRFTOKEN'
+    });
+  }
+  
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
 
