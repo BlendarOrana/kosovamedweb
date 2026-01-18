@@ -151,14 +151,44 @@ const csrfProtection = csrf({
   }
 });
 
-// CRITICAL: CSRF token endpoint MUST come BEFORE general API protection
-// This endpoint generates and returns the CSRF token
-app.get('/api/csrf-token', csrfProtection, (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
+// Middleware to conditionally apply CSRF protection
+const conditionalCsrfProtection = (req, res, next) => {
+  // Skip CSRF for safe methods (GET, HEAD, OPTIONS)
+  // This mimics csurf's internal behavior
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+  
+  // Check if request is from mobile app
+  const clientType = req.headers['x-client-type'];
+  
+  // Skip CSRF for mobile apps on state-changing methods
+  if (clientType === 'mobile' || clientType === 'react-native') {
+    return next();
+  }
+  
+  // Apply CSRF protection for web clients on state-changing methods
+  csrfProtection(req, res, next);
+};
+
+// CSRF token endpoint - for web clients only
+app.get('/api/csrf-token', (req, res) => {
+  const clientType = req.headers['x-client-type'];
+  
+  // Mobile apps don't need CSRF tokens
+  if (clientType === 'mobile' || clientType === 'react-native') {
+    return res.json({ csrfToken: null });
+  }
+  
+  // Generate token for web clients
+  csrfProtection(req, res, (err) => {
+    if (err) return next(err);
+    res.json({ csrfToken: req.csrfToken() });
+  });
 });
 
-// Apply rate limiting and CSRF protection to all other API routes
-app.use('/api/', apiLimiter, csrfProtection);
+// Apply rate limiting and conditional CSRF to API routes
+app.use('/api/', apiLimiter, conditionalCsrfProtection);
 
 // --- API ROUTES ---
 app.use("/api/auth", authLimiter, authRoutes);
@@ -168,7 +198,7 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes);
 
-// Health check endpoint (no CSRF needed for GET)
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK' });
 });
