@@ -142,7 +142,6 @@ app.use(compression());
 // 8. SQL Injection Protection
 app.use(sqlInjectionProtection);
 
-// 9. Conditional CSRF Protection (only for web clients)
 const csrfProtection = csrf({ 
   cookie: {
     httpOnly: true,
@@ -152,7 +151,13 @@ const csrfProtection = csrf({
 });
 
 // Middleware to conditionally apply CSRF protection
+// Middleware to conditionally apply CSRF protection
 const conditionalCsrfProtection = (req, res, next) => {
+  // Skip CSRF for safe methods (GET, HEAD, OPTIONS)
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+  
   // Check if request is from mobile app
   const clientType = req.headers['x-client-type'];
   
@@ -161,7 +166,7 @@ const conditionalCsrfProtection = (req, res, next) => {
     return next();
   }
   
-  // Apply CSRF protection for web clients
+  // Apply CSRF protection for web clients on state-changing methods
   csrfProtection(req, res, next);
 };
 
