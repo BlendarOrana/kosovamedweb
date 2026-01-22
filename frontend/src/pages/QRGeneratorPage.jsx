@@ -10,8 +10,8 @@ function QRGeneratorPage() {
   
   // !!! PASTE YOUR APP LINKS HERE !!!
   // --- Official Badge Image URLs (Standard CDNs) ---
-  const APP_STORE_BADGE = "https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg";
-  const PLAY_STORE_BADGE = "https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg";
+const APP_STORE_BADGE = "/Download_on_the_App_Store_Badge.svg";
+const PLAY_STORE_BADGE = "/Google_Play_Store_badge_EN.svg";
 
   // --- State ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
