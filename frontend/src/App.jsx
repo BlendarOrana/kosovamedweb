@@ -4,10 +4,11 @@ import { Toaster } from "react-hot-toast";
 
 import LoginPage from "./pages/LoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import QRGeneratorPage from "./pages/QRGeneratorPage.jsx"; // IMPORT ADDED
 import { useUserStore } from "./stores/useUserStore";
 import LoadingSpinner from "./components/LoadingSpinner";
 import ResetPassword from "./pages/ResetPassword";
-import PrivacyPolicy from "./pages/PrivacyPolicy"; // 1. IMPORT ADDED
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 // ScrollToTop component
 function ScrollToTop() {
@@ -24,7 +25,7 @@ function App() {
   const { user, checkAuth, checkingAuth, loading, loadingShops } = useUserStore();
   
   useEffect(() => {
-    checkAuth(); // Call checkAuth directly instead of initializeAuth
+    checkAuth();
   }, [checkAuth]);
 
   // Show loading spinner while checking auth or loading user data
@@ -72,12 +73,13 @@ function App() {
             }
           />
            
-           {/* Privacy Policy - Public Route (Added) */}
+           {/* Privacy Policy - Public Route */}
            <Route 
              path="/privacy-policy" 
              element={<PrivacyPolicy />} 
            />
 
+           {/* Reset Password - Public Route */}
            <Route 
             path="/reset-password/:id/:token" 
             element={<ResetPassword />} 
@@ -93,6 +95,12 @@ function App() {
             } 
           />
 
+          <Route 
+            path="/qr-generator" 
+            element={<QRGeneratorPage />} 
+          />
+
+          {/* Dashboard Redirect */}
           <Route 
             path="/dashboard" 
             element={

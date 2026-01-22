@@ -146,6 +146,8 @@ export const login = async (req, res) => {
         number: user.number,
         role: user.role,
         active: user.active,
+        region: user.region
+
       });
     } else {
       res.status(400).json({ message: "Invalid name or password" });

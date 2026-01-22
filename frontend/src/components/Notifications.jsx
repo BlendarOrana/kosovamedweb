@@ -1,57 +1,137 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNotificationStore } from "../stores/useNotificationStore";
-import { FiSend, FiUsers, FiGlobe, FiUser, FiBarChart2 } from "react-icons/fi";
+import { useUserStore } from "../stores/useUserStore";
+import { FiSend, FiUsers, FiGlobe, FiUser, FiBarChart2, FiLock } from "react-icons/fi";
+import clsx from 'clsx';
 
-const Notifications = () => {
-  const [activeTab, setActiveTab] = useState("single");
+// --- Shared Constants (Same as Reports) ---
 
-  return (
-    <div className="max-w-4xl mx-auto p-6 bg-gray-50 rounded-xl shadow-lg">
-      <div className="flex items-center justify-between mb-6 border-b pb-4">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Dërgo Njoftime
-        </h1>
-        <FiBarChart2
-          className="text-gray-500 hover:text-cyan-600 cursor-pointer"
-          size={24}
-        />
-      </div>
+const TITLES = [
+  "Doktor", "Infermier", "Shofer", "Administrate", "Jurist", 
+  "Ekonomist", "Sociolog", "Psikog", "Serviser"
+];
 
-      {/* Tabs for different notification types */}
-      <div className="flex border-b border-gray-200">
-        <TabButton
-          icon={<FiUser />}
-          label="Një Përdorues"
-          isActive={activeTab === "single"}
-          onClick={() => setActiveTab("single")}
-        />
-        <TabButton
-          icon={<FiUsers />}
-          label="Grup"
-          isActive={activeTab === "batch"}
-          onClick={() => setActiveTab("batch")}
-        />
-        <TabButton
-          icon={<FiGlobe />}
-          label="Të Gjithë Përdoruesit"
-          isActive={activeTab === "all"}
-          onClick={() => setActiveTab("all")}
-        />
-      </div>
+const REGIONS = [
+  "Deçan", "Dragash", "Ferizaj", "Fushë Kosovë", "Gjakovë", "Gjilan", 
+  "Gllogoc (Drenas)", "Gracanicë", "Hani i Elezit", "Istog", "Junik", 
+  "Kamenicë", "Kaçanik", "Klinë", "Leposaviq", "Lipjan", "Malishevë", 
+  "Mitrovicë", "Mitrovicë e Veriut", "Obiliq", "Pejë", "Podujevë", 
+  "Prishtinë", "Prizren", "Rahovec", "Shtime", "Shtërpcë", "Skenderaj", 
+  "Suharekë", "Viti", "Vushtrri", "Zubin Potok", "Zveçan"
+];
 
-      {/* Render the active tab's content */}
-      <div className="pt-6">
-        {activeTab === "single" && <SingleUserForm />}
-        {activeTab === "batch" && <BatchForm />}
-        {activeTab === "all" && <AllUsersForm />}
+// --- Reusable UI Components (Matching Reports Style) ---
+
+const InputField = ({ id, label, disabled, className, ...props }) => (
+  <div>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    <input
+      id={id}
+      disabled={disabled}
+      className={clsx(
+        "w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition placeholder-gray-400 bg-white",
+        disabled && "opacity-60 bg-gray-200 cursor-not-allowed text-gray-500",
+        className
+      )}
+      {...props}
+    />
+  </div>
+);
+
+const TextareaField = ({ id, label, rows = 4, ...props }) => (
+  <div>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    <textarea
+      id={id}
+      rows={rows}
+      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition placeholder-gray-400 bg-white"
+      {...props}
+    />
+  </div>
+);
+
+const SelectField = ({ id, label, options = [], disabled, value, onChange, placeholder = "Zgjidh një opsion", ...props }) => (
+  <div>
+    <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1">
+      {label}
+    </label>
+    <div className="relative">
+      <select
+        id={id}
+        disabled={disabled}
+        value={value}
+        onChange={onChange}
+        className={clsx(
+          "w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition appearance-none bg-white",
+          disabled && "opacity-80 bg-gray-100 cursor-not-allowed text-gray-600 border-gray-300"
+        )}
+        {...props}
+      >
+        <option value="" disabled>{placeholder}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {/* Dropdown Icon Arrow */}
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+        {disabled && value ? <FiLock className="w-4 h-4 text-gray-500" /> : (
+            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+             <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+            </svg>
+        )}
       </div>
     </div>
-  );
-};
+  </div>
+);
 
-/*
- * Individual Form Components
- */
+const SubmitButton = ({ isSending, text, disabled }) => (
+  <button
+    type="submit"
+    disabled={isSending || disabled}
+    className={clsx(
+      "w-full flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-white rounded-lg transition-all shadow-md",
+      (isSending || disabled) 
+        ? "bg-gray-400 cursor-not-allowed" 
+        : "bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500"
+    )}
+  >
+    {isSending ? (
+      <><span>Duke dërguar...</span></>
+    ) : (
+      <>
+        <FiSend size={18} />
+        {text}
+      </>
+    )}
+  </button>
+);
+
+const TabButton = ({ icon, label, isActive, onClick, disabled }) => (
+  <button
+    onClick={!disabled ? onClick : undefined}
+    disabled={disabled}
+    className={clsx(
+      "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-all",
+      isActive
+        ? "bg-cyan-600 text-white shadow-sm z-10"
+        : "text-gray-600 hover:bg-gray-200 bg-gray-100",
+      disabled && "opacity-50 cursor-not-allowed hover:bg-gray-100 text-gray-400"
+    )}
+  >
+    {icon}
+    {label}
+    {disabled && <FiLock className="ml-1 h-3 w-3" />}
+  </button>
+);
+
+// --- Sub-Forms ---
+
 const SingleUserForm = () => {
   const { sending, sendNotificationByName } = useNotificationStore();
   const [recipient, setRecipient] = useState("");
@@ -60,49 +140,43 @@ const SingleUserForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const notificationData = { 
+    if (!recipient.trim()) return;
+    
+    await sendNotificationByName({ 
       title, 
-      body,
+      body, 
       userName: recipient 
-    };
-
-    await sendNotificationByName(notificationData);
-
-    // Clear form on success
+    });
     setRecipient("");
     setTitle("");
     setBody("");
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 animate-fadeIn">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Recipient Field */}
         <InputField
           id="recipient"
           label="Përdoruesi sipas Emrit"
           value={recipient}
           onChange={(e) => setRecipient(e.target.value)}
-          placeholder="Vendos Emrin e Përdoruesit"
+          placeholder="Vendos Emrin e Përdoruesit..."
         />
-        {/* Title Field */}
         <InputField
           id="title"
           label="Titulli"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="p.sh., Përditësim i Rëndësishëm i Llogarisë"
+          placeholder="Titulli i njoftimit..."
         />
       </div>
-      {/* Body Field */}
       <TextareaField
         id="body"
         label="Mesazhi"
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="Shkruani mesazhin kryesor..."
+        placeholder="Shkruani mesazhin këtu..."
       />
-
       <SubmitButton isSending={sending} text="Dërgo Njoftimin" />
     </form>
   );
@@ -110,67 +184,105 @@ const SingleUserForm = () => {
 
 const BatchForm = () => {
   const { batchSending, sendBatchNotifications } = useNotificationStore();
-  const [target, setTarget] = useState("role"); // 'role' or 'region'
+  const { user } = useUserStore(); // Get Current User
+  
+  const [targetType, setTargetType] = useState(""); // 'role' or 'region'
   const [selectedValue, setSelectedValue] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+
+  const isManager = user?.role === 'manager';
+  const userRegion = user?.region;
+
+  // Logic: When switching Target Type
+  const handleTypeChange = (e) => {
+    const type = e.target.value;
+    setTargetType(type);
+    
+    // Reset selection logic
+    if (type === 'region' && isManager) {
+        // If Manager selects Region, lock to their region immediately
+        setSelectedValue(userRegion || ''); 
+    } else {
+        setSelectedValue('');
+    }
+  };
+
+  // Memoized Options
+  const regionOptions = useMemo(() => {
+    // Note: If isManager is true, we force the value, so options matter less, 
+    // but good to show just their region.
+    if (isManager && userRegion) {
+        return [{ value: userRegion, label: userRegion }];
+    }
+    return REGIONS.map(r => ({ value: r, label: r }));
+  }, [isManager, userRegion]);
+
+  const titleOptions = useMemo(() => {
+      return TITLES.map(t => ({ value: t, label: t }));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const batchData = {
       title,
       body,
-      ...(target === "role" && { role: selectedValue }),
-      ...(target === "region" && { region: selectedValue }),
+      ...(targetType === "role" && { role: selectedValue }),
+      ...(targetType === "region" && { region: selectedValue }),
     };
 
     const result = await sendBatchNotifications(batchData);
-    if (result.success) {
-      setSelectedValue("");
+    if (result?.success) {
+      if (!isManager) setSelectedValue(""); 
       setTitle("");
       setBody("");
     }
   };
 
+  const isLockedRegion = isManager && targetType === 'region';
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 animate-fadeIn">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Target Field */}
         <SelectField
           id="target-type"
-          label="Targeto sipas"
-          value={target}
-          onChange={(e) => {
-            setTarget(e.target.value);
-            setSelectedValue(""); // Reset selection on change
-          }}
+          label="Targeto Grupin sipas"
+          value={targetType}
+          onChange={handleTypeChange}
           options={[
-            { value: "role", label: "Titulli" },
-            { value: "region", label: "Regjioni" },
+            { value: "role", label: "Titullit (Rolit)" },
+            { value: "region", label: "Regjionit" },
           ]}
+          placeholder="Zgjidh Llojin e Grupit"
         />
-        {/* Dynamic Input for Role/Region */}
-        <InputField
-          id="target-value"
-          label={`Shto ${target === "role" ? "Titullin" : "Regjionin"}`}
-          value={selectedValue}
-          onChange={(e) => setSelectedValue(e.target.value)}
-          placeholder={target === "role" ? "p.sh., Doktor" : "p.sh., Prishtinë"}
+
+        {/* Dynamic Dropdown based on Type */}
+        <SelectField
+            id="target-value"
+            label={targetType === "role" ? "Zgjidh Titullin" : "Zgjidh Regjionin"}
+            value={selectedValue}
+            onChange={(e) => setSelectedValue(e.target.value)}
+            // Pass options based on selection
+            options={targetType === "role" ? titleOptions : regionOptions}
+            // Lock if Manager selects Region
+            disabled={isLockedRegion}
+            placeholder={isLockedRegion ? userRegion : `Zgjidh ${targetType === "role" ? "Titullin" : "Regjionin"}`}
         />
       </div>
+
       <InputField
         id="batch-title"
         label="Titulli"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="p.sh., Promocion Special për Regjionin tuaj"
+        placeholder="p.sh., Njoftim për stafin"
       />
       <TextareaField
         id="batch-body"
         label="Mesazhi"
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="Shkruani mesazhin kryesor për grupin..."
+        placeholder="Shkruani mesazhin..."
       />
 
       <SubmitButton isSending={batchSending} text="Dërgo Njoftim Grupit" />
@@ -185,134 +297,108 @@ const AllUsersForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = await sendToAllUsers({ title, body });
-    if (result.success) {
-      setTitle("");
-      setBody("");
+    if(confirm("Jeni i sigurt që doni t'u dërgoni të gjithë përdoruesve?")) {
+        const result = await sendToAllUsers({ title, body });
+        if (result.success) {
+        setTitle("");
+        setBody("");
+        }
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6 animate-fadeIn">
+      <div className="!mt-8 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
+        <p className="font-bold flex items-center"><FiGlobe className="mr-2"/>Kujdes!</p>
+        <p>Ky njoftim do të shkojë tek të gjithë përdoruesit e regjistruar në sistem.</p>
+      </div>
+
       <InputField
         id="all-users-title"
         label="Titulli"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="p.sh., Njoftim i Rëndësishëm"
+        placeholder="Njoftim i Përgjithshëm"
       />
       <TextareaField
         id="all-users-body"
-        label="Mesazhi"
+        label="Mesazhi per te gjith Userat"
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="Ky mesazh do t'u dërgohet të gjithë përdoruesve aktivë."
+        placeholder="Ky mesazh do t'u dërgohet të gjithë përdoruesve..."
       />
 
-      <div className="!mt-8 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700">
-        <p className="font-bold">Kujdes!</p>
-        <p>Ky veprim do t'i dërgojë një njoftim të gjithë përdoruesve aktivë.</p>
-      </div>
-      <SubmitButton isSending={batchSending} text="Dërgo të Gjithë Përdoruesve" />
+      <SubmitButton isSending={batchSending} text="Dërgo te Të Gjithë" />
     </form>
   );
 };
 
-/*
- * Reusable UI Components
- */
-const TabButton = ({ icon, label, isActive, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg transition-all
-      ${
-        isActive
-          ? "bg-cyan-600 text-white"
-          : "text-gray-600 hover:bg-gray-200"
-      }`}
-  >
-    {icon}
-    {label}
-  </button>
-);
+// --- Main Component ---
 
-const InputField = ({ id, label, ...props }) => (
-  <div>
-    <label
-      htmlFor={id}
-      className="block text-sm font-medium text-gray-700 mb-1"
-    >
-      {label}
-    </label>
-    <input
-      id={id}
-      type="text"
-      required
-      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-      {...props}
-    />
-  </div>
-);
+const Notifications = () => {
+  const { user } = useUserStore(); // Check user role
+  const isManager = user?.role === 'manager';
 
-const TextareaField = ({ id, label, ...props }) => (
-  <div>
-    <label
-      htmlFor={id}
-      className="block text-sm font-medium text-gray-700 mb-1"
-    >
-      {label}
-    </label>
-    <textarea
-      id={id}
-      rows={4}
-      required
-      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition"
-      {...props}
-    />
-  </div>
-);
+  // Determine available tabs
+  // If user changes (e.g. logout/login), reset tab if locked out
+  const [activeTab, setActiveTab] = useState("single");
 
-const SelectField = ({ id, label, options = [], ...props }) => (
-  <div>
-    <label
-      htmlFor={id}
-      className="block text-sm font-medium text-gray-700 mb-1"
-    >
-      {label}
-    </label>
-    <select
-      id={id}
-      required
-      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition bg-white"
-      {...props}
-    >
-      <option value="">
-        Zgjidh një opsion
-      </option>
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+  const handleTabChange = (tab) => {
+    // Extra security check for click handler
+    if (tab === 'all' && isManager) return;
+    setActiveTab(tab);
+  };
 
-const SubmitButton = ({ isSending, text }) => (
-  <button
-    type="submit"
-    disabled={isSending}
-    className="w-full flex items-center justify-center gap-2 px-6 py-3 text-base font-semibold text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-cyan-500 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed"
-  >
-    {isSending ? (
-      "Duke dërguar..."
-    ) : (
-      <>
-        <FiSend size={18} />
-        {text}
-      </>
-    )}
-  </button>
-);
+  return (
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+        
+      {/* Header Container styled similar to Reports */}
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        
+        <div className="p-6 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <div>
+                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                <div className="p-2 bg-cyan-100 rounded-lg text-cyan-600">
+                    <FiSend size={24} />
+                </div>
+                Dërgo Njoftime
+                </h1>
+            </div>
+            <FiBarChart2 className="text-gray-400 opacity-20 hidden sm:block" size={48} />
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="px-6 mt-4 flex border-b border-gray-200 gap-1 overflow-x-auto">
+            <TabButton
+            icon={<FiUser />}
+            label="Një Përdorues"
+            isActive={activeTab === "single"}
+            onClick={() => handleTabChange("single")}
+            />
+            <TabButton
+            icon={<FiUsers />}
+            label="Njoftim në Grup"
+            isActive={activeTab === "batch"}
+            onClick={() => handleTabChange("batch")}
+            />
+            <TabButton
+            icon={<FiGlobe />}
+            label="Të Gjithë"
+            isActive={activeTab === "all"}
+            onClick={() => handleTabChange("all")}
+            disabled={isManager} // Completely disable this tab for Managers
+            />
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6 min-h-[400px]">
+            {activeTab === "single" && <SingleUserForm />}
+            {activeTab === "batch" && <BatchForm />}
+            {activeTab === "all" && !isManager && <AllUsersForm />}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default Notifications;

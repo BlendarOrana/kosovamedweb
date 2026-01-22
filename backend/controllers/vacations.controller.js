@@ -208,7 +208,9 @@ export const respondToReplacement = async (req, res) => {
 
 // Manager: Get pending vacation requests
 export const getManagerVacations = async (req, res) => {
+  const managerId = req.user.id; // Get the manager's ID from the authenticated user
   const { status } = req.query;
+  
   try {
     let query = `
       SELECT 
@@ -222,10 +224,10 @@ export const getManagerVacations = async (req, res) => {
       FROM vacations v
       LEFT JOIN users u1 ON v.user_id = u1.id
       LEFT JOIN users u2 ON v.replacement_user_id = u2.id
-      WHERE 1=1
+      WHERE u1.region = (SELECT region FROM users WHERE id = $1)
     `;
     
-    const params = [];
+    const params = [managerId];
     
     if (status) {
       params.push(status);
