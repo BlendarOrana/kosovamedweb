@@ -10,7 +10,7 @@ const navigationItems = [
   { path: "/admin/notifications", id: "notifications", label: "Njoftimet", icon: FiBell, description: "Shiko njoftimet e fundit" },
   { path: "/admin/vacations", id: "vacations", label: "Kërkesat për Pushime", icon: FiCalendar, description: "Shqyrto kërkesat e punonjësve", adminOnly: true },
   { path: "/admin/managervacations", id: "managervacations", label: "Kërkesat për Pushime", icon: FiCalendar, description: "Shqyrto kërkesat e punonjësve", managerOnly: true },
-  { path: "/admin/raportet", id: "raportet", label: "Raportet", icon: FiBarChart2, description: "Gjenero dhe shkarko raporte", adminOnly: true },
+  { path: "/admin/raportet", id: "raportet", label: "Raportet", icon: FiBarChart2, description: "Gjenero dhe shkarko raporte", adminOnly: false },
 ];
 
 const NavItem = memo(({ item, isActive, onClick, isCollapsed }) => {

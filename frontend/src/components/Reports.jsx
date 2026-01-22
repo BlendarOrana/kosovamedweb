@@ -1,25 +1,46 @@
 import { useState, useMemo, useCallback } from 'react';
-import { FiClock, FiCalendar, FiDownload, FiArrowLeft, FiArrowRight, FiCheckCircle, FiLoader, FiBarChart2 } from 'react-icons/fi';
+import { FiClock, FiCalendar, FiDownload, FiArrowLeft, FiArrowRight, FiLoader } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 // Sigurohuni që të importoni store-et tuaja saktë
 import { useReportsStore } from '../stores/useReportsStore';
 import { useUserStore } from '../stores/useUserStore';
 
-
 // --- Komponentët e ripërdorshëm të UI ---
 
-const InputField = ({ id, label, type, value, onChange, options = [], ...props }) => {
-  const commonClasses = 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition placeholder-gray-400';
+const InputField = ({ id, label, type, value, onChange, options = [], disabled, ...props }) => {
+  const commonClasses = clsx(
+    'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition placeholder-gray-400',
+    disabled && 'opacity-50 cursor-not-allowed bg-gray-800 text-gray-400'
+  );
+
   return (
     <div>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-1">{label}</label>
+      <label htmlFor={id} className="block text-sm font-medium text-gray-300 mb-1">
+        {label}
+        {disabled && <span className="text-xs text-gray-500 ml-2"></span>}
+      </label>
       {type === 'select' ? (
-        <select id={id} value={value} onChange={onChange} className={commonClasses} {...props}>
+        <select 
+          id={id} 
+          value={value} 
+          onChange={onChange} 
+          className={commonClasses} 
+          disabled={disabled}
+          {...props}
+        >
           {options.map((option) => (<option key={option.value} value={option.value}>{option.label}</option>))}
         </select>
       ) : (
-        <input id={id} type={type} value={value} onChange={onChange} className={commonClasses} {...props} />
+        <input 
+          id={id} 
+          type={type} 
+          value={value} 
+          onChange={onChange} 
+          className={commonClasses} 
+          disabled={disabled}
+          {...props} 
+        />
       )}
     </div>
   );
@@ -88,7 +109,7 @@ const Step1_SelectReport = ({ onSelect, selectedId, reportDefinitions }) => (
 const Step2_ConfigureFilters = ({ report, filters, onFilterChange }) => (
   <WizardStep>
     <h2 className="text-2xl font-bold text-white mb-1">Vendos Filtrat</h2>
-    <p className="text-gray-400 mb-6">Specifikoni kriteret për '{report.title}'. Lërini fushat bosh për të përfshirë të gjitha të dhënat.</p>
+    <p className="text-gray-400 mb-6">Specifikoni kriteret për '{report.title}'.</p>
     <div className="space-y-4">
       {report.fields.map((field) => (
         <InputField
@@ -100,6 +121,7 @@ const Step2_ConfigureFilters = ({ report, filters, onFilterChange }) => (
           onChange={(e) => onFilterChange(field.key, e.target.value)}
           placeholder={field.placeholder}
           options={field.options}
+          disabled={field.disabled} // Check for locked fields (like region for manager)
         />
       ))}
     </div>
@@ -161,22 +183,69 @@ const Reports = () => {
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [filters, setFilters] = useState({});
 
+const Titles = [
+
+ "Doktor","Infermier", "Shofer", "Administrate", "Jurist", "Ekonomist", "Sociolog" , "Psikog","Shofer","Serviser"
+];
+
+
   // Hardcoded regions
-  const REGIONS = ['Istog', 'Gjilan', 'Malishevë', 'Skenderaj', 'Viti', 'Klinë', 'Ferizaj', 'Fushë Kosovë', 'Mitrovicë', 'Prizren'];
+  const REGIONS = ["Deçan",
+  "Dragash",
+  "Ferizaj",
+  "Fushë Kosovë",
+  "Gjakovë",
+  "Gjilan",
+  "Gllogoc (Drenas)",
+  "Gracanicë",
+  "Hani i Elezit",
+  "Istog",
+  "Junik",
+  "Kamenicë",
+  "Kaçanik",
+  "Klinë",
+  "Leposaviq",
+  "Lipjan",
+  "Malishevë",
+  "Mitrovicë",
+  "Mitrovicë e Veriut",
+  "Obiliq",
+  "Pejë",
+  "Podujevë",
+  "Prishtinë",
+  "Prizren",
+  "Rahovec",
+  "Shtime",
+  "Shtërpcë",
+  "Skenderaj",
+  "Suharekë",
+  "Viti",
+  "Vushtrri",
+  "Zubin Potok",
+  "Zveçan",];
 
-  // Këto do të vijnë nga store-et tuaja aktuale
   const { downloadAttendanceReport, downloadVacationReport, loading, downloadProgress } = useReportsStore();
-  const { titles = [] } = useUserStore();
+  const { user, titles = [] } = useUserStore(); // Updated to get user
 
-  const regionOptions = useMemo(() => [
-    { value: '', label: 'Të gjitha Rajonet' },
-    ...REGIONS.map((region) => ({ value: region, label: region })),
-  ], []);
+  // Check role logic
+  const isManager = user?.role === 'manager';
+  const userRegion = user?.region;
+
+  const regionOptions = useMemo(() => {
+    // If manager, only return their region as option, otherwise all
+    if (isManager && userRegion) {
+      return [{ value: userRegion, label: userRegion }];
+    }
+    return [
+      { value: '', label: 'Të gjitha Rajonet' },
+      ...REGIONS.map((region) => ({ value: region, label: region })),
+    ];
+  }, [isManager, userRegion, REGIONS]);
 
   const titleOptions = useMemo(() => [
     { value: '', label: 'Të gjithë Titujt' },
-    ...(titles || []).map((title) => ({ value: title, label: title })),
-  ], [titles]);
+    ...Titles.map((title) => ({ value: title, label: title })),
+  ], [Titles]);
 
   const reportDefinitions = useMemo(() => [
     {
@@ -189,7 +258,13 @@ const Reports = () => {
         { key: 'startDate', label: 'Data e Fillimit', type: 'date' },
         { key: 'endDate', label: 'Data e Mbarimit', type: 'date' },
         { key: 'username', label: 'Përdoruesi (opsional)', type: 'text', placeholder: 'p.sh. filan fisteku' },
-        { key: 'region', label: 'Rajoni (opsional)', type: 'select', options: regionOptions },
+        { 
+          key: 'region', 
+          label: 'Rajoni', // Label for Manager vs Admin
+          type: 'select', 
+          options: regionOptions,
+          disabled: isManager // Lock if manager
+        },
         { key: 'title', label: 'Roli (opsional)', type: 'select', options: titleOptions },
       ],
     },
@@ -210,17 +285,29 @@ const Reports = () => {
           ],
         },
         { key: 'username', label: 'Përdoruesi (opsional)', type: 'text', placeholder: '' },
-        { key: 'region', label: 'Rajoni (opsional)', type: 'select', options: regionOptions },
+        { 
+          key: 'region', 
+          label: 'Rajoni', 
+          type: 'select', 
+          options: regionOptions,
+          disabled: isManager // Lock if manager
+        },
         { key: 'title', label: 'Roli (opsional)', type: 'select', options: titleOptions },
       ],
     },
-  ], [regionOptions, titleOptions, downloadAttendanceReport, downloadVacationReport]);
+  ], [regionOptions, titleOptions, downloadAttendanceReport, downloadVacationReport, isManager]);
 
   const handleSelectReport = (id) => {
     setSelectedReportId(id);
     const report = reportDefinitions.find((r) => r.id === id);
     if (report) {
       const initialFilters = { ...report.initialFilters };
+      
+      // Auto-set and lock region for manager
+      if (isManager && userRegion) {
+        initialFilters.region = userRegion;
+      }
+
       if (id === 'attendance') {
         const now = new Date();
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);

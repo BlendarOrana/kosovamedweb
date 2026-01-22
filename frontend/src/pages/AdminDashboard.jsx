@@ -16,7 +16,7 @@ const adminRoutes = [
     { path: "/admin/pending-users", id: "pending-users", label: "Usera te ri", fullScreen: false  },
 
   { path: "/admin/managervacations", id: "managervacations", label: "Kërkesat për Pushime", fullScreen: false, managerOnly: true },
-  { path: "/admin/raportet", id: "raportet", label: "Raportet", fullScreen: false,adminOnly: true },
+  { path: "/admin/raportet", id: "raportet", label: "Raportet", fullScreen: false,adminOnly: false },
 ];
 
 const AdminDashboard = () => {

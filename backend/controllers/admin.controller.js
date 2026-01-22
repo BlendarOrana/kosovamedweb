@@ -542,8 +542,8 @@ export const updateShiftRequestStatus = async (req, res) => {
       : 'Kërkesa për ndryshim turni u refuzua';
     
     const body = status === 'approved'
-      ? `Kërkesa juaj për ndryshim në turnin ${shiftText} u pranua me sukses.`
-      : `Kërkesa juaj për ndryshim në turnin ${shiftText} u refuzua.`;
+      ? `Kërkesa juaj për ndryshim në turnin ${shiftText} eshte pranuar.`
+      : `Kërkesa juaj për ndryshim në turnin ${shiftText} eshte refuzuar.`;
 
     await NotificationService.sendPushNotification(
       request.user_id,
