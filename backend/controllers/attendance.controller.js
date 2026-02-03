@@ -6,19 +6,24 @@ import { promisePool } from "../lib/db.js";
 export const checkIn = async (req, res) => {
   const userId = req.user.id;
   try {
-    const today = new Date().toISOString().split('T')[0];
+    // Check if there's already an open check-in (most recent by id)
     const existingCheckIn = await promisePool.query(`
       SELECT id FROM attendance 
-      WHERE user_id = $1 AND DATE(check_in_time) = $2 AND check_out_time IS NULL
-    `, [userId, today]);
+      WHERE user_id = $1 AND check_out_time IS NULL
+      ORDER BY id DESC
+      LIMIT 1
+    `, [userId]);
+
     if (existingCheckIn.rows.length > 0) {
-      return res.status(400).json({ message: "Already checked in today" });
+      return res.status(400).json({ message: "Already checked in" });
     }
+
     const result = await promisePool.query(`
       INSERT INTO attendance (user_id, check_in_time)
       VALUES ($1, CURRENT_TIMESTAMP)
       RETURNING id, check_in_time
     `, [userId]);
+
     res.json({
       message: "Checked in successfully",
       attendance: result.rows[0]
@@ -29,20 +34,26 @@ export const checkIn = async (req, res) => {
   }
 };
 
-// Check out (No changes needed)
 export const checkOut = async (req, res) => {
   const userId = req.user.id;
   try {
-    const today = new Date().toISOString().split('T')[0];
+    // Find the most recent open check-in by id and close it
     const result = await promisePool.query(`
       UPDATE attendance 
       SET check_out_time = CURRENT_TIMESTAMP
-      WHERE user_id = $1 AND DATE(check_in_time) = $2 AND check_out_time IS NULL
+      WHERE id = (
+        SELECT id FROM attendance 
+        WHERE user_id = $1 AND check_out_time IS NULL
+        ORDER BY id DESC
+        LIMIT 1
+      )
       RETURNING id, check_in_time, check_out_time
-    `, [userId, today]);
+    `, [userId]);
+
     if (result.rows.length === 0) {
-      return res.status(400).json({ message: "No active check-in found for today" });
+      return res.status(400).json({ message: "No active check-in found" });
     }
+
     res.json({
       message: "Checked out successfully",
       attendance: result.rows[0]
@@ -53,38 +64,43 @@ export const checkOut = async (req, res) => {
   }
 };
 
-// Add this new controller
 export const getTodayStatus = async (req, res) => {
   const userId = req.user.id;
   try {
-    const today = new Date().toISOString().split('T')[0];
-    
-    const result = await promisePool.query(`
+    // Check for an active open check-in first
+    const activeCheckIn = await promisePool.query(`
       SELECT id, check_in_time, check_out_time
       FROM attendance 
-      WHERE user_id = $1 AND DATE(check_in_time) = $2
-      ORDER BY check_in_time DESC
+      WHERE user_id = $1 AND check_out_time IS NULL
+      ORDER BY id DESC
       LIMIT 1
-    `, [userId, today]);
-    
-    if (result.rows.length === 0) {
-      return res.json({ 
-        status: 'checked-out', 
-        record: null 
+    `, [userId]);
+
+    if (activeCheckIn.rows.length > 0) {
+      return res.json({
+        status: "checked-in",
+        record: activeCheckIn.rows[0]
       });
     }
-    
-    const record = result.rows[0];
+
+    // No open check-in, grab the most recent completed record
+    const lastRecord = await promisePool.query(`
+      SELECT id, check_in_time, check_out_time
+      FROM attendance 
+      WHERE user_id = $1
+      ORDER BY id DESC
+      LIMIT 1
+    `, [userId]);
+
     res.json({
-      status: record.check_out_time ? 'checked-out' : 'checked-in',
-      record: record
+      status: "checked-out",
+      record: lastRecord.rows[0] || null
     });
   } catch (error) {
-    console.error("Error fetching today's status:", error);
+    console.error("Error fetching status:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 export const markVacationAsSeen = async (req, res) => {
   const userId = req.user.id;
