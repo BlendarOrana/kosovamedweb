@@ -43,7 +43,7 @@ const PLAY_STORE_BADGE = "/Google_Play_Store_badge_EN.svg";
       label: "Attendance",
       algorithm: "SHA1",
       digits: 6,
-      period: 300,
+      period: 30,
       secret: OTPAuth.Secret.fromBase32(TOTP_SECRET),
     });
 
