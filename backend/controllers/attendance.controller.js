@@ -1,12 +1,81 @@
-// src/controllers/attendance.controller.js
-
 import { promisePool } from "../lib/db.js";
 
-// Check in (No changes needed)
+const OFFICE_LOCATIONS = [
+  { id: 1,  name: "HQ – Main Building",      lat: 42.65184182563937, lng: 21.169402496155314 },
+];
+
+const BASE_RADIUS_M   = 20;   
+const MAX_RADIUS_M    = 40;   
+const LOCATION_TTL_MS = 20_000; 
+
+function haversineMetres(lat1, lng1, lat2, lng2) {
+  const R   = 6_371_000; 
+  const toR = (deg) => (deg * Math.PI) / 180;
+  const dLat = toR(lat2 - lat1);
+  const dLng = toR(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toR(lat1)) * Math.cos(toR(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function nearestOffice(userLat, userLng) {
+  let best = null;
+  for (const office of OFFICE_LOCATIONS) {
+    const dist = haversineMetres(userLat, userLng, office.lat, office.lng);
+    if (!best || dist < best.distance) {
+      best = { office, distance: dist };
+    }
+  }
+  return best;
+}
+
+async function validateLocation(req) {
+  const { lat, lng, accuracy, locationTimestamp } = req.body;
+
+  if (lat == null || lng == null || accuracy == null) {
+    return { ok: false, status: 400, message: "Location data is required." };
+  }
+
+  if (locationTimestamp) {
+    const age = Date.now() - new Date(locationTimestamp).getTime();
+    if (age > LOCATION_TTL_MS) {
+      return { ok: false, status: 400, message: "Location data is too old." };
+    }
+  }
+
+  if (accuracy > 50) {
+    return { ok: false, status: 400, message: "GPS accuracy is too low." };
+  }
+
+  const maxRadius = Math.min(BASE_RADIUS_M + accuracy, MAX_RADIUS_M);
+  const nearest   = nearestOffice(lat, lng);
+
+  if (!nearest || nearest.distance > maxRadius) {
+    const distText = nearest ? `${Math.round(nearest.distance)} m away` : "no offices found";
+    return {
+      ok: false,
+      status: 403,
+      message: `You are not within distance (${distText}). Required: ${Math.round(maxRadius)} m.`,
+    };
+  }
+
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Controller Actions
+// ---------------------------------------------------------------------------
+
 export const checkIn = async (req, res) => {
   const userId = req.user.id;
+
+  // 1. Check location first
+  const validation = await validateLocation(req).catch(() => ({ ok: false, status: 500, message: "Validation error" }));
+  if (!validation.ok) return res.status(validation.status).json({ message: validation.message });
+
+  // 2. Your original DB logic
   try {
-    // Check if there's already an open check-in (most recent by id)
     const existingCheckIn = await promisePool.query(`
       SELECT id FROM attendance 
       WHERE user_id = $1 AND check_out_time IS NULL
@@ -36,8 +105,13 @@ export const checkIn = async (req, res) => {
 
 export const checkOut = async (req, res) => {
   const userId = req.user.id;
+
+  // 1. Check location first
+  const validation = await validateLocation(req).catch(() => ({ ok: false, status: 500, message: "Validation error" }));
+  if (!validation.ok) return res.status(validation.status).json({ message: validation.message });
+
+  // 2. Your original DB logic
   try {
-    // Find the most recent open check-in by id and close it
     const result = await promisePool.query(`
       UPDATE attendance 
       SET check_out_time = CURRENT_TIMESTAMP
@@ -63,7 +137,6 @@ export const checkOut = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 export const getTodayStatus = async (req, res) => {
   const userId = req.user.id;
   try {
