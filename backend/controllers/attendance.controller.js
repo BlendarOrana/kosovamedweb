@@ -2,6 +2,8 @@ import { promisePool } from "../lib/db.js";
 
 const OFFICE_LOCATIONS = [
   { id: 1,  name: "HQ – Main Building",      lat: 42.65184182563937, lng: 21.169402496155314 },
+   { id: 2,  name: "QkQkmf Skenderajmf",      lat: 42.74721521578018, lng: 20.78698461542366 },
+
 ];
 
 const BASE_RADIUS_M   = 20;   
