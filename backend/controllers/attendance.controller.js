@@ -1,9 +1,11 @@
 import { promisePool } from "../lib/db.js";
 
 const OFFICE_LOCATIONS = [
-  { id: 1,  name: "HQ – Main Building",      lat: 42.65184182563937, lng: 21.169402496155314 },
+   { id: 1,  name: "HQ – Main Building",      lat: 42.65184182563937, lng: 21.169402496155314 },
    { id: 2,  name: "Qkmf Skenderaj",      lat: 42.74721521578018, lng: 20.78698461542366 },
    { id: 3,  name: "QMF- Qirez (Skenderaj)",lat: 42.71607260408312, lng: 20.89094466123742 },
+   { id: 4,  name: "Qkmf kline",lat: 42.61939280000000, lng: 20.57123670000000 },
+
 
 
 ];
