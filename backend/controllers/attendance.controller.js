@@ -6,6 +6,10 @@ const OFFICE_LOCATIONS = [
    { id: 3,  name: "QMF- Qirez (Skenderaj)",lat: 42.71607260408312, lng: 20.89094466123742 },
    { id: 4,  name: "Qkmf kline",lat: 42.61939280000000, lng: 20.57123670000000 },
    { id: 5,  name: "QMF Sferk (Kline)",lat: 42.54123295748425, lng: 20.61030506475371 },
+   { id: 6,  name: "Skenderaj",lat: 42.74458464467040,lng: 20.78550617809941 },
+   { id: 7,  name: "QPS Kline",lat: 42.61772120949209, lng: 20.57092895353628 },
+   { id: 8,  name: "(Dresnin) Kline",lat: 42.60491600721786, lng: 20.52061848529930 },
+   { id: 9,  name: "(Jashanic) Kline",lat: 42.63538470000000, lng: 20.64100310000000 },
 
 
 
