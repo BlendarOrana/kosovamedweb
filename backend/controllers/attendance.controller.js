@@ -10,6 +10,9 @@ const OFFICE_LOCATIONS = [
    { id: 7,  name: "QPS Kline",lat: 42.61772120949209, lng: 20.57092895353628 },
    { id: 8,  name: "(Dresnin) Kline",lat: 42.60491600721786, lng: 20.52061848529930 },
    { id: 9,  name: "(Jashanic) Kline",lat: 42.63538470000000, lng: 20.64100310000000 },
+   { id: 10,  name: "Qmf Stanterg (Mitrovic)",lat: 42.94042186974297, lng: 20.92336652300105 },
+   { id: 11,  name: "Bare Shal (Mitrovic)",lat: 42.95166185077396, lng: 20.96472409230651 },
+   { id: 12,  name: "QMF Runik (Skenderaj)",lat: 42.79443314855924, lng: 20.69252167897621 },
 
 
 
