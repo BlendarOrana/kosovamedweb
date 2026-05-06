@@ -14,9 +14,12 @@ const OFFICE_LOCATIONS = [
    { id: 11,  name: "Bare Shal (Mitrovic)",lat: 42.95166185077396, lng: 20.96472409230651 },
    { id: 12,  name: "QMF Runik (Skenderaj)",lat: 42.79443314855924, lng: 20.69252167897621 },
    { id: 13,  name: "Mitrovice",lat: 42.91904066813984, lng: 20.89999031190001 },
-  { id: 14,  name: "Qkmf Mitrovice",lat: 42.89083165278907, lng: 20.87344971041443 },
-
-
+   { id: 14,  name: "Qkmf Mitrovice",lat: 42.89083165278907, lng: 20.87344971041443 },
+   { id: 15,  name: "Qkmf Kqiq Mitrovice",lat: 42.86139485637696, lng: 20.92503547644794 },
+   { id: 16,  name: "Qkmf Frasher Mitrovice",lat: 42.86098612638327, lng: 20.88170997196001 },
+   { id: 17,  name: "Qkmf Ura e gjakut Mitrovice",lat: 42.87082085032519, lng: 20.86700679877211 },
+   { id: 18,  name: "Amf Fidanishte Mitrovice",lat: 42.88677100372704, lng: 20.85862498600552 },
+   { id: 19,  name: "Qmf Koshtove",lat: 42.87479258111124, lng: 20.79601496118030 },
 ];
 
 const BASE_RADIUS_M   = 20;   
