@@ -13,7 +13,7 @@ const OFFICE_LOCATIONS = [
    { id: 10,  name: "Qmf Stanterg (Mitrovic)",lat: 42.94042186974297, lng: 20.92336652300105 },
    { id: 11,  name: "Bare Shal (Mitrovic)",lat: 42.95166185077396, lng: 20.96472409230651 },
    { id: 12,  name: "QMF Runik (Skenderaj)",lat: 42.79443314855924, lng: 20.69252167897621 },
-
+   { id: 13,  name: "Mitrovice",lat: 42.91904066813984, lng: 20.89999031190001 },
 
 
 
