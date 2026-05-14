@@ -416,14 +416,23 @@ export const acceptUser = async (req, res) => {
 
 export const getPendingUsers = async (req, res) => {
   try {
-    const managerRegion = req.user.region;
-    const result = await promisePool.query(
-      `SELECT id, name, email, number, profile_image_url, region, created_at 
-       FROM users 
-       WHERE status = FALSE AND region = $1
-       ORDER BY created_at DESC`,
-      [managerRegion]
-    );
+    let query = `
+      SELECT id, name, email, number, profile_image_url, region, created_at 
+      FROM users 
+      WHERE status = FALSE
+    `;
+
+    const queryParams = [];
+
+    if (req.user.role === 'manager') {
+      query += ` AND region = $1`;
+      queryParams.push(req.user.region);
+    }
+
+    query += ` ORDER BY created_at DESC`;
+
+    const result = await promisePool.query(query, queryParams);
+
     const users = result.rows.map(user => ({
       ...user,
       profile_image_url: user.profile_image_url 
