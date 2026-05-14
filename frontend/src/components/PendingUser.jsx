@@ -59,10 +59,11 @@ const regions = [
 ];
 
 
-  const shifts = [
-    { value: 1, label: "Paradite (Mëngjes)" },
-    { value: 2, label: "Pasdite" }
-  ];
+const shifts = [
+  { value: 1, label: "Paradite (Mëngjes)" },
+  { value: 2, label: "Pasdite" },
+  { value: 3, label: "Vikendev" }
+];
 
   useEffect(() => {
     getPendingUsers();
@@ -178,9 +179,10 @@ const regions = [
     });
   };
 
-  const getShiftLabel = (shift) => {
-    return shift === 1 ? 'Turni 1 (Mëngjes)' : 'Turni 2 (Pasdite)';
-  };
+const getShiftLabel = (shift) => {
+  const labels = { 1: 'Turni 1 (Paradite)', 2: 'Turni 2 (Pasdite)', 3: 'Turni 3 (Vikendev)' };
+  return labels[shift] ?? 'E panjohur';
+};
 
   const getStatusBadge = (status) => {
     const badges = {

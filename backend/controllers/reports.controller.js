@@ -87,12 +87,14 @@ export const generateAttendanceReport = async (req, res) => {
     // Add data rows
     result.rows.forEach(row => {
       // Convert shift number to text
-      let shiftText = 'N/A';
-      if (row.shift === 1) {
-        shiftText = 'Paradite';
-      } else if (row.shift === 2) {
-        shiftText = 'Pasdite';
-      }
+let shiftText = 'N/A';
+if (row.shift === 1) {
+  shiftText = 'Paradite';
+} else if (row.shift === 2) {
+  shiftText = 'Pasdite';
+} else if (row.shift === 3) {
+  shiftText = 'Vikendev';
+}
 
       worksheet.addRow({
         name: row.name,
