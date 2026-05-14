@@ -20,9 +20,9 @@ const REGIONS = [
 
 const SHIFTS = [
   { value: 1, label: "Paradite", color: "text-orange-400 bg-orange-400/10" },
-  { value: 2, label: "Pasdite", color: "text-blue-400 bg-blue-400/10" }
+  { value: 2, label: "Pasdite", color: "text-blue-400 bg-blue-400/10" },
+  { value: 3, label: "Vikendev", color: "text-purple-400 bg-purple-400/10" }
 ];
-
 const INITIAL_FORM_DATA = {
   name: "", password: "", confirmPassword: "", number: "", role: "user",
   active: true, region: "", shift: "", title: "", email: "",
