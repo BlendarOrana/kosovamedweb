@@ -502,10 +502,9 @@ export const createShiftRequest = async (req, res) => {
 
   try {
     // Validate requested_shift
-    if (![1, 2].includes(requested_shift)) {
-      return res.status(400).json({ message: "Invalid shift. Must be 1 or 2" });
-    }
-
+if (![1, 2, 3].includes(requested_shift)) {
+  return res.status(400).json({ message: "Invalid shift. Must be 1, 2, or 3" });
+}
     // Check if user already has a pending request
     const existingRequest = await promisePool.query(
       'SELECT id FROM shift_requests WHERE user_id = $1 AND status = $2',
