@@ -316,3 +316,150 @@ Ekipi i ${process.env.SENDER_NAME}
     throw error;
   }
 };
+
+
+
+
+
+
+export const sendUserAcceptedEmail = async (userEmail, userName, shift) => {
+  // Përcakto emrin e ndërrimit bazuar në numrin
+  const shiftMap = {
+    1: 'Paradite',
+    2: 'Pasdite',
+    3: 'Vikendeve'
+  };
+  
+  const shiftName = shiftMap[shift] || 'E pacaktuar';
+
+  const mailOptions = {
+    from: `"${process.env.SENDER_NAME}" <${process.env.SENDER_EMAIL}>`,
+    to: userEmail,
+    subject: 'Konfirmim: Llogaria juaj është aprovuar',
+    html: `
+      <!DOCTYPE html>
+      <html lang="sq">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          .header {
+            background-color: #000000;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+          }
+          .header img {
+            max-width: 200px;
+            height: auto;
+          }
+          .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-radius: 0 0 5px 5px;
+          }
+          .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+          }
+          .message {
+            margin-bottom: 20px;
+          }
+          .info-box {
+            background-color: #fff;
+            border-left: 4px solid #09a8fa;
+            padding: 15px;
+            margin: 20px 0;
+          }
+
+
+          .info-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+          }
+          .footer {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #666;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="cid:kosovamedlogo" alt="${process.env.SENDER_NAME}" />
+        </div>
+        <div class="content">
+          <div class="greeting">
+            <strong>I nderuar/e nderuar ${userName},</strong>
+          </div>
+          
+          <div class="message">
+            <p>Faleminderit për durimin tuaj.</p>
+            
+            <p>Ju njoftojmë se llogaria juaj është <strong>aprovuar me sukses</strong> nga stafi ynë. 
+            Tani keni qasje të plotë në të gjitha funksionet e platformës sonë.</p>
+          </div>
+          
+          <div class="info-box">
+            <strong>Detajet e llogarisë suaj:</strong>
+            <ul>
+              <li><strong>Statusi:</strong> Aktiv</li>
+              <li><strong>Ndërrimi i caktuar:</strong> ${shiftName}</li>
+            </ul>
+            <p style="margin-top: 10px; font-size: 14px;">Mund të kyçeni tani duke përdorur numrin e id  dhe fjalëkalimin tuaj.</p>
+          </div>
+          
+          <div class="footer">
+            <p>Nëse keni ndonjë pyetje shtesë, ju lutemi na kontaktoni në <strong>info@kosovamed.com</strong>.</p>
+            <p>Me respekt,<br>Ekipi i ${process.env.SENDER_NAME}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `,
+    text: `
+I nderuar/e nderuar ${userName},
+
+Faleminderit për durimin tuaj.
+
+Ju njoftojmë se llogaria juaj është aprovuar me sukses nga stafi ynë. Tani keni qasje të plotë në të gjitha funksionet e platformës sonë.
+
+Detajet e llogarisë suaj:
+• Statusi: Aktiv
+• Ndërrimi i caktuar: ${shiftName}
+
+Mund të kyçeni tani duke përdorur numrin e id dhe fjalëkalimin tuaj.
+
+Nëse keni ndonjë pyetje shtesë, ju lutemi na kontaktoni në info@kosovamed.com.
+
+Me respekt,
+Ekipi i ${process.env.SENDER_NAME}
+    `,
+    attachments: [
+      {
+        filename: 'Kosovamed.png',
+        path: logoPath, // Sigurohu qe 'logoPath' eshte deklaruar lart ne file ashtu si te emaili i kaluar
+        cid: 'kosovamedlogo'
+      }
+    ]
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Accepted email sent successfully:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending accepted email:', error);
+    throw error;
+  }
+};
