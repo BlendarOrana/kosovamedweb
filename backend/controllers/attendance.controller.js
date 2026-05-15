@@ -20,6 +20,10 @@ const OFFICE_LOCATIONS = [
    { id: 17,  name: "Qkmf Ura e gjakut Mitrovice",lat: 42.87082085032519, lng: 20.86700679877211 },
    { id: 18,  name: "Amf Fidanishte Mitrovice",lat: 42.88677100372704, lng: 20.85862498600552 },
    { id: 19,  name: "Qmf Koshtove",lat: 42.87479258111124, lng: 20.79601496118030 },
+   { id: 20,  name: "Zhabar (mitrovice)",lat: 42.86589970706010, lng: 20.84167299826773 },
+   { id: 21,  name: "Qkmf Bajr 2",lat: 42.87918122229133, lng: 20.86705740510230 },
+
+
 ];
 
 const BASE_RADIUS_M   = 20;   

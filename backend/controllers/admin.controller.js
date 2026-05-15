@@ -3,6 +3,7 @@ import { promisePool } from "../lib/db.js";
 import { uploadToS3, deleteFromS3, getCloudFrontUrl } from '../lib/s3.js';
 import multer from 'multer';
 import NotificationService from '../services/notification.service.js'
+import { sendUserAcceptedEmail } from '../services/emailService.js';
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -389,22 +390,42 @@ export const updatePushToken = async (req, res) => {
 
 
 
-
 export const acceptUser = async (req, res) => {
   const { userId } = req.params;
   const { region, shift, contractStartDate } = req.body;
 
   try {
-    // Validate shift value
-    if (shift !== 1 && shift !== 2) {
-      return res.status(400).json({ message: "Invalid shift value. Must be 1 or 2." });
+    // Validim: Tani pranon 1, 2, ose 3
+    if (![1, 2, 3].includes(shift)) {
+      return res.status(400).json({ message: "Invalid shift value. Must be 1, 2, or 3." });
     }
 
-    // Update status, region, shift, and contract start date
-    await promisePool.query(
-      'UPDATE users SET status = true, region = $1, shift = $2, contract_start_date = $3 WHERE id = $4',
+    // Bëjmë UPDATE dhe i themi DB të na i kthejë Emrin dhe Emailin (RETURNING name, email)
+    // Kështu shpëtojmë nga një SELECT shtesë
+    const result = await promisePool.query(
+      `UPDATE users 
+       SET status = true, region = $1, shift = $2, contract_start_date = $3 
+       WHERE id = $4 
+       RETURNING name, email`,
       [region, shift, contractStartDate, userId]
     );
+
+    // Kontrollo nëse u gjet ndonjë user
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Marrim emrin dhe emailin që na e ktheu Database
+    const { name, email } = result.rows[0];
+
+    // Dërgo email-in e aprovimit
+    try {
+      await sendUserAcceptedEmail(email, name, shift);
+      console.log(`User accepted email sent to ${email}`);
+    } catch (emailError) {
+      // E kapim error-in mos me e bo fail API-n nëse ka ndonjë problem serveri i emaileve
+      console.error('Failed to send accepted email:', emailError);
+    }
 
     res.status(200).json({ message: "User accepted successfully" });
   } catch (error) {
