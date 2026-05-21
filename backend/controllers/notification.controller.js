@@ -35,10 +35,11 @@ export const getUserNotifications = async (req, res) => {
     const userId = req.user.id;
     const { limit = 50, offset = 0 } = req.query;
 
+    // UPDATED: Added "OR user_id IS NULL"
     const result = await promisePool.query(
       `SELECT id, title, body, data, is_read, created_at 
        FROM notifications 
-       WHERE user_id = $1 
+       WHERE user_id = $1 OR user_id IS NULL 
        ORDER BY created_at DESC 
        LIMIT $2 OFFSET $3`,
       [userId, limit, offset]

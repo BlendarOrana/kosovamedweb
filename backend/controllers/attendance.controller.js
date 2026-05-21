@@ -27,7 +27,7 @@ const OFFICE_LOCATIONS = [
 ];
 
 const BASE_RADIUS_M   = 20;   
-const MAX_RADIUS_M    = 40;   
+const MAX_RADIUS_M    = 60;   
 const LOCATION_TTL_MS = 20_000; 
 
 function haversineMetres(lat1, lng1, lat2, lng2) {
@@ -66,7 +66,7 @@ async function validateLocation(req) {
     }
   }
 
-  if (accuracy > 50) {
+  if (accuracy > 60) {
     return { ok: false, status: 400, message: "GPS accuracy is too low." };
   }
 
