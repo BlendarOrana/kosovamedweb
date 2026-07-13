@@ -22,8 +22,8 @@ const OFFICE_LOCATIONS = [
    { id: 19,  name: "Qmf Koshtove",lat: 42.87479258111124, lng: 20.79601496118030 },
    { id: 20,  name: "Zhabar (mitrovice)",lat: 42.86589970706010, lng: 20.84167299826773 },
    { id: 21,  name: "Qkmf Bajr 2",lat: 42.87918122229133, lng: 20.86705740510230 },
-   { id: 22,  name: "Qkmf Skenderaj ",lat: 42.74703409506279, lng: 20.78680694066475 },
-   { id: 23,  name: "Qkmf Skenderaj ",lat: 42.74718698191562, lng: 20.78714073860310 },
+   { id: 22,  name: "Qkmf Skenderaj",lat: 42.74703409506279, lng: 20.78680694066475 },
+   { id: 23,  name: "Qkmf Skenderaj",lat: 42.74718698191562, lng: 20.78714073860310 },
 
 
 
