@@ -24,6 +24,11 @@ const OFFICE_LOCATIONS = [
    { id: 21,  name: "Qkmf Bajr 2",lat: 42.87918122229133, lng: 20.86705740510230 },
    { id: 22,  name: "Qkmf Skenderaj",lat: 42.74703409506279, lng: 20.78680694066475 },
    { id: 23,  name: "Qkmf Skenderaj",lat: 42.74718698191562, lng: 20.78714073860310 },
+   { id: 24,  name: "QMF bellanica",lat: 42.46101906013874, lng: 20.81986769286994 },
+   { id: 25,  name: "AMF Llozice",lat: 42.55969988476879, lng: 20.77408760072808 },
+   { id: 26,  name: "QMF Kijeve",lat: 42.57030745839491, lng: 20.71790436916158 },
+   { id: 27,  name: "QKMF Malisheve",lat: 42.47895530286658, lng: 20.73824442096618 },
+
 
 
 
