@@ -29,36 +29,47 @@ export const NotificationService = {
     } catch (error) { console.error('Error saving notification:', error); }
   },
 
-  async sendPushNotification(userId, title, body, data = {}) {
+
+async sendPushNotification(userId, title, body, data = {}) {
     try {
       const result = await promisePool.query('SELECT push_token FROM users WHERE id = $1 AND push_token IS NOT NULL', [userId]);
       if (result.rows.length === 0 || !result.rows[0].push_token) return { success: false, message: 'No push token found' };
 
       const pushToken = result.rows[0].push_token;
-      if (!Expo.isExpoPushToken(pushToken)) return { success: false, message: 'Invalid push token' };
+      if (!Expo.isExpoPushToken(pushToken)) return { success: false, message: 'Invalid push token format' };
 
-      await expo.sendPushNotificationsAsync([{ to: pushToken, sound: 'default', title, body, data, priority: 'high', badge: 1 }]);
+      // Save ticket array response
+      const tickets = await expo.sendPushNotificationsAsync([
+        { to: pushToken, sound: 'default', title, body, data, priority: 'high', badge: 1 }
+      ]);
+      
+      // CHECK IF EXPO REJECTED IT SILENTLY
+      const ticket = tickets[0];
+      if (ticket.status === 'error') {
+        const errorReason = ticket.details?.error;
+        
+        // If app was uninstalled, delete token from DB
+        if (errorReason === 'DeviceNotRegistered') {
+          promisePool.query('UPDATE users SET push_token = NULL WHERE id = $1', [userId]).catch(() => {});
+        }
+        
+        return { success: false, message: `Expo error: ${errorReason}` };
+      }
+
       await this.saveNotificationToDatabase(userId, title, body, data);
-
       return { success: true };
-    } catch (error) { return { success: false, error: error.message }; }
+    } catch (error) { 
+      return { success: false, error: error.message }; 
+    }
   },
 
-  async sendPushNotificationByName(userName, title, body, data = {}) {
-    try {
-      const result = await promisePool.query('SELECT id, push_token FROM users WHERE name = $1', [userName]);
-      if (result.rows.length === 0) return { success: false, message: 'User not found' };
-      if (!result.rows[0].push_token) return { success: false, message: 'User has no push token' };
-      return await this.sendPushNotification(result.rows[0].id, title, body, data);
-    } catch (error) { return { success: false, error: error.message }; }
-  },
-
-  // --- UPDATED BATCH FUNCTION ---
+  // --- BATCH PUSH NOTIFICATIONS ---
   async sendBatchNotifications(filter, title, body, data = {}, batchSize = 50, delayMs = 1000) {
     try {
       let query = 'SELECT id, push_token, name FROM users WHERE active = true';
       const params = [];
       
+      // Note: As you mentioned, 'filter.role' actually searches the 'title' column in the DB!
       if (filter.role) {
         params.push(filter.role);
         query += ` AND title = $${params.length}`; 
@@ -94,25 +105,46 @@ export const NotificationService = {
             validUsers.push(user);
           } else {
             failedCount++;
-            failedUsers.push({ id: user.id, name: user.name, reason: 'Invalid push token' });
+            failedUsers.push({ id: user.id, name: user.name, reason: 'Invalid push token format' });
           }
         }
 
         if (messages.length > 0) {
           try {
-            await expo.sendPushNotificationsAsync(messages);
-            // Notice: We removed the loop saving to the DB here!
-            sentCount += validUsers.length;
+            // Wait for Expo to send back receipts
+            const tickets = await expo.sendPushNotificationsAsync(messages);
+            
+            // ANALYZE TICKETS TO FIND DEAD TOKENS
+            tickets.forEach((ticket, idx) => {
+              if (ticket.status === 'ok') {
+                sentCount++;
+              } else if (ticket.status === 'error') {
+                failedCount++;
+                const badUser = validUsers[idx];
+                const errorReason = ticket.details?.error || 'Unknown Error';
+                
+                failedUsers.push({ id: badUser.id, name: badUser.name, reason: errorReason });
+                
+                // CRITICAL FIX: Delete token from database if the user uninstalled your app
+                if (errorReason === 'DeviceNotRegistered') {
+                   // Clean up DB silently in the background
+                   promisePool.query('UPDATE users SET push_token = NULL WHERE id = $1', [badUser.id]).catch(() => {});
+                }
+              }
+            });
+
           } catch (error) {
+            // True Network failure Catch block
             failedCount += validUsers.length;
-            validUsers.forEach(user => failedUsers.push({ id: user.id, name: user.name, reason: 'Send failed' }));
+            validUsers.forEach(user => failedUsers.push({ id: user.id, name: user.name, reason: 'Network or API failure' }));
           }
         }
 
+        // Wait between batches so Expo doesn't rate limit us
         if (i < batches.length - 1) await new Promise(resolve => setTimeout(resolve, delayMs));
       }
 
-      // SAVE EXACTLY 1 ROW FOR THE ENTIRE BROADCAST! 
+      // ONLY SAVE 1 GENERAL DB NOTIFICATION IF ANY PUSH SENT PROPERLY
       if (sentCount > 0) {
         await promisePool.query(
           `INSERT INTO notifications (user_id, title, body, data, is_read, created_at)
@@ -129,8 +161,24 @@ export const NotificationService = {
         failedCount,
         failedUsers: failedUsers.length > 0 ? failedUsers : undefined
       };
-    } catch (error) { return { success: false, error: error.message, totalUsers: 0, sentCount: 0, failedCount: 0 }; }
+    } catch (error) { 
+       return { success: false, error: error.message, totalUsers: 0, sentCount: 0, failedCount: 0 }; 
+    }
   },
+
+
+
+  async sendPushNotificationByName(userName, title, body, data = {}) {
+    try {
+      const result = await promisePool.query('SELECT id, push_token FROM users WHERE name = $1', [userName]);
+      if (result.rows.length === 0) return { success: false, message: 'User not found' };
+      if (!result.rows[0].push_token) return { success: false, message: 'User has no push token' };
+      return await this.sendPushNotification(result.rows[0].id, title, body, data);
+    } catch (error) { return { success: false, error: error.message }; }
+  },
+
+  // --- UPDATED BATCH FUNCTION ---
+ 
 
   async sendToAllUsers(title, body, data = {}, batchSize = 100, delayMs = 500) {
     return await this.sendBatchNotifications({}, title, body, data, batchSize, delayMs);
