@@ -147,24 +147,7 @@ export const markAllNotificationsAsRead = async (req, res) => {
   }
 };
 
-/**
- * Mark all unread notifications as read for the authenticated user.
- */
-export const markAllNotificationsAsRead = async (req, res) => {
-  try {
-    const userId = req.user.id;
 
-    await promisePool.query(
-      'UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false',
-      [userId]
-    );
-
-    res.status(200).json({ message: 'All notifications marked as read' });
-  } catch (error) {
-    console.error('Error marking all notifications as read:', error);
-    res.status(500).json({ error: 'Failed to update notifications' });
-  }
-};
 
 /**
  * Removes the push token for a user, typically on logout.
