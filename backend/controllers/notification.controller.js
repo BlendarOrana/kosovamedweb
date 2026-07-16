@@ -30,20 +30,33 @@ export const updateUserPushToken = async (req, res) => {
 /**
  * Fetch all notifications for the authenticated user.
  */
+// 1. Get Notifications
 export const getUserNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
     const { limit = 50, offset = 0 } = req.query;
 
-    // UPDATED: Added "OR user_id IS NULL"
-    const result = await promisePool.query(
-      `SELECT id, title, body, data, is_read, created_at 
-       FROM notifications 
-       WHERE user_id = $1 OR user_id IS NULL 
-       ORDER BY created_at DESC 
-       LIMIT $2 OFFSET $3`,
-      [userId, limit, offset]
-    );
+    const query = `
+      SELECT 
+        n.id, 
+        n.title, 
+        n.body, 
+        n.data, 
+        n.created_at,
+        CASE 
+          WHEN n.user_id IS NOT NULL THEN n.is_read
+          WHEN gnr.user_id IS NOT NULL THEN true
+          ELSE false 
+        END as is_read 
+      FROM notifications n
+      LEFT JOIN global_notification_reads gnr 
+        ON n.id = gnr.notification_id AND gnr.user_id = $1
+      WHERE n.user_id = $1 OR n.user_id IS NULL 
+      ORDER BY n.created_at DESC 
+      LIMIT $2 OFFSET $3
+    `;
+
+    const result = await promisePool.query(query, [userId, limit, offset]);
 
     const formattedNotifications = result.rows.map(n => ({
       id: n.id,
@@ -64,31 +77,73 @@ export const getUserNotifications = async (req, res) => {
   }
 };
 
-/**
- * Mark a single notification as read.
- */
+// 2. Mark Single Notification as Read
 export const markNotificationAsRead = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    if (!id) {
-      return res.status(400).json({ error: 'Notification ID is required' });
+    if (!id) return res.status(400).json({ error: 'Notification ID is required' });
+
+    // Step 1: Find out if it's a global or private notification
+    const check = await promisePool.query('SELECT user_id FROM notifications WHERE id = $1', [id]);
+    
+    if (check.rowCount === 0) {
+      return res.status(404).json({ error: 'Notification not found' });
     }
 
-    const result = await promisePool.query(
-      'UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2',
-      [id, userId]
-    );
+    const notif = check.rows[0];
 
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Notification not found or user not authorized' });
+    // Step 2: Update read state accordingly
+    if (notif.user_id === null) {
+      // Global Notification -> Insert to Pivot table
+      // (ON CONFLICT DO NOTHING ensures if they click it twice, the app doesn't crash)
+      await promisePool.query(
+        'INSERT INTO global_notification_reads (user_id, notification_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [userId, id]
+      );
+    } else if (notif.user_id === userId) {
+      // Private Notification -> Update the column
+      await promisePool.query(
+        'UPDATE notifications SET is_read = true WHERE id = $1 AND user_id = $2',
+        [id, userId]
+      );
+    } else {
+      return res.status(403).json({ error: 'Not authorized' });
     }
 
     res.status(200).json({ message: 'Notification marked as read' });
   } catch (error) {
     console.error('Error marking notification as read:', error);
     res.status(500).json({ error: 'Failed to update notification' });
+  }
+};
+
+// 3. Mark ALL Notifications as Read (THIS ALSO NEEDS FIXING)
+// Previously this ignored global notifications.
+export const markAllNotificationsAsRead = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // A. Mark all Private notifications as read
+    await promisePool.query(
+      'UPDATE notifications SET is_read = true WHERE user_id = $1 AND is_read = false',
+      [userId]
+    );
+
+    // B. Mark all current Global notifications as read for this user
+    await promisePool.query(
+      `INSERT INTO global_notification_reads (user_id, notification_id)
+       SELECT $1, id FROM notifications 
+       WHERE user_id IS NULL 
+       ON CONFLICT DO NOTHING`,
+      [userId]
+    );
+
+    res.status(200).json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    res.status(500).json({ error: 'Failed to update notifications' });
   }
 };
 
