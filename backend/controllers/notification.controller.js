@@ -31,6 +31,7 @@ export const updateUserPushToken = async (req, res) => {
  * Fetch all notifications for the authenticated user.
  */
 // 1. Get Notifications
+// 1. Get Notifications
 export const getUserNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -49,9 +50,26 @@ export const getUserNotifications = async (req, res) => {
           ELSE false 
         END as is_read 
       FROM notifications n
+      -- JOIN the users table so we can check their region/role against the JSON filter
+      JOIN users u ON u.id = $1 
       LEFT JOIN global_notification_reads gnr 
         ON n.id = gnr.notification_id AND gnr.user_id = $1
-      WHERE n.user_id = $1 OR n.user_id IS NULL 
+      WHERE 
+        n.user_id = $1 
+        OR (
+          n.user_id IS NULL 
+          AND (
+            -- 1. If there's no filter, it's for everyone (General Notification)
+            n.data->'target_filter' IS NULL 
+            OR 
+            -- 2. If there IS a filter, it must match the user's region/role
+            (
+              (n.data->'target_filter'->>'region' IS NULL OR n.data->'target_filter'->>'region' = u.region)
+              AND 
+              (n.data->'target_filter'->>'role' IS NULL OR n.data->'target_filter'->>'role' = u.role)
+            )
+          )
+        )
       ORDER BY n.created_at DESC 
       LIMIT $2 OFFSET $3
     `;
@@ -69,7 +87,7 @@ export const getUserNotifications = async (req, res) => {
       product_name: n.data?.product_name,
       product_status: n.data?.product_status,
     }));
-
+//sdadsadasd
     res.status(200).json(formattedNotifications);
   } catch (error) {
     console.error('Error fetching user notifications:', error);
@@ -119,8 +137,7 @@ export const markNotificationAsRead = async (req, res) => {
   }
 };
 
-// 3. Mark ALL Notifications as Read (THIS ALSO NEEDS FIXING)
-// Previously this ignored global notifications.
+// 3. Mark ALL Notifications as Read
 export const markAllNotificationsAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -131,11 +148,20 @@ export const markAllNotificationsAsRead = async (req, res) => {
       [userId]
     );
 
-    // B. Mark all current Global notifications as read for this user
+    // B. Mark all current Global & Filtered Batch notifications as read for this user
     await promisePool.query(
       `INSERT INTO global_notification_reads (user_id, notification_id)
-       SELECT $1, id FROM notifications 
-       WHERE user_id IS NULL 
+       SELECT $1, n.id FROM notifications n
+       JOIN users u ON u.id = $1
+       WHERE n.user_id IS NULL 
+         AND (
+           n.data->'target_filter' IS NULL 
+           OR (
+             (n.data->'target_filter'->>'region' IS NULL OR n.data->'target_filter'->>'region' = u.region)
+             AND 
+             (n.data->'target_filter'->>'role' IS NULL OR n.data->'target_filter'->>'role' = u.role)
+           )
+         )
        ON CONFLICT DO NOTHING`,
       [userId]
     );
