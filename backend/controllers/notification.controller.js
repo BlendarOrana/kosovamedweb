@@ -87,7 +87,7 @@ export const getUserNotifications = async (req, res) => {
       product_name: n.data?.product_name,
       product_status: n.data?.product_status,
     }));
-
+//sdadsadasd
     res.status(200).json(formattedNotifications);
   } catch (error) {
     console.error('Error fetching user notifications:', error);
