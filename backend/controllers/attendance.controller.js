@@ -28,6 +28,7 @@ const OFFICE_LOCATIONS = [
    { id: 25,  name: "AMF Llozice",lat: 42.55969988476879, lng: 20.77408760072808 },
    { id: 26,  name: "QMF Kijeve",lat: 42.57030745839491, lng: 20.71790436916158 },
    { id: 27,  name: "QKMF Malisheve",lat: 42.47895530286658, lng: 20.73824442096618 },
+   { id: 28,  name: "QMF-1 Rr. Deshmoret e Kombit Vushtrri",lat: 42.81866402132053, lng: 20.97875377820181 },
 
 
 
