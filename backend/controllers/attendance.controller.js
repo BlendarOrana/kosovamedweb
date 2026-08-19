@@ -33,17 +33,17 @@ const OFFICE_LOCATIONS = [
    { id: 30, name: "QMF2", lat: 42.82813463909188, lng: 20.97348303463282 },
    { id: 31, name: "QMF 3", lat: 42.83694624405284, lng: 20.95755657033522 },
    { id: 32, name: "QKMF", lat: 42.82142734065709, lng: 20.95960564529437 },
-   { id: 33, name: "Amf Duboc", lat: 42.77509793039417, lng: 20.87782512948207 },
-   { id: 34, name: "Amf Beqiq", lat: 42.75527688252390, lng: 20.88449097626702 },
-   { id: 35, name: "Amf Stroc", lat: 42.72066936233472, lng: 20.99454832874186 },
 
-
-
-
-
-
-
-
+   { id: 33, name: "Amf sadregje", lat: 42.82411676348113, lng: 21.04844854858658 },
+   { id: 34, name: "Qmf Maxhunaj", lat: 42.78341294814076, lng: 21.02351167504702 },
+   { id: 35, name: "Qmf smrekonicë", lat: 42.85521266036965, lng: 20.93643703543557 },
+   { id: 36, name: "Qmf Pantine", lat: 42.83566633428605, lng: 20.91711433627952 },
+   { id: 37, name: "Qmf Novolan", lat: 42.78853542733849, lng: 20.94059753452025 },
+   { id: 38, name: "Qmf Druar", lat: 42.77050012510158, lng: 20.98669244026601 },
+   { id: 39, name: "Amf Duboc", lat: 42.77509793039417, lng: 20.87782512948207 },
+   { id: 40, name: "Amf Beqiq", lat: 42.75527688252390, lng: 20.88449097626702 },
+   { id: 41, name: "Amf Stroc", lat: 42.72066936233472, lng: 20.99454832874186 },
+   
 ];
 
 const BASE_RADIUS_M   = 20;   
