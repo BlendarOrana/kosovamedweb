@@ -13,32 +13,33 @@ export const getAvailableReplacements = async (req, res) => {
 
     const result = await promisePool.query(`
       SELECT DISTINCT u.id, u.name, u.profile_image_url
-      FROM users u
-      WHERE u.active = true
-      AND u.region = (SELECT region FROM users WHERE id = $1)
-      AND u.id != $1
-      AND u.id NOT IN (
-        -- Users who have approved/pending vacations during the period
-        SELECT user_id FROM vacations
-        WHERE status IN ('approved', 'pending_manager_approval', 'pending_replacement_acceptance')
-        AND (
-          (start_date <= $2 AND end_date >= $2) OR
-          (start_date <= $3 AND end_date >= $3) OR
-          (start_date >= $2 AND end_date <= $3)
-        )
-      )
-      AND u.id NOT IN (
-        -- Users who are already replacements for approved/pending vacations during the period
-        SELECT replacement_user_id FROM vacations
-        WHERE replacement_status = 'accepted'
-        AND status IN ('approved', 'pending_manager_approval', 'pending_admin_approval')
-        AND (
-          (start_date <= $2 AND end_date >= $2) OR
-          (start_date <= $3 AND end_date >= $3) OR
-          (start_date >= $2 AND end_date <= $3)
-        )
-      )
-      ORDER BY u.name ASC
+FROM users u
+WHERE u.active = true
+AND u.status = true
+AND u.region = (SELECT region FROM users WHERE id = $1)
+AND u.id != $1
+AND u.id NOT IN (
+  -- Users who have approved/pending vacations during the period
+  SELECT user_id FROM vacations
+  WHERE status IN ('approved', 'pending_manager_approval', 'pending_replacement_acceptance')
+  AND (
+    (start_date <= $2 AND end_date >= $2) OR
+    (start_date <= $3 AND end_date >= $3) OR
+    (start_date >= $2 AND end_date <= $3)
+  )
+)
+AND u.id NOT IN (
+  -- Users who are already replacements for approved/pending vacations during the period
+  SELECT replacement_user_id FROM vacations
+  WHERE replacement_status = 'accepted'
+  AND status IN ('approved', 'pending_manager_approval', 'pending_admin_approval')
+  AND (
+    (start_date <= $2 AND end_date >= $2) OR
+    (start_date <= $3 AND end_date >= $3) OR
+    (start_date >= $2 AND end_date <= $3)
+  )
+)
+ORDER BY u.name ASC
     `, [userId, startDate, endDate]);
 
     // Transform the results to include CloudFront URLs
